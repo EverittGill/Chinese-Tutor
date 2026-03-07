@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { getAzureConfig, setAzureConfig } from '../utils/config';
+import { getAzureConfig, setAzureConfig, getSupabaseConfig, setSupabaseConfig } from '../utils/config';
+import { resetSupabaseClient } from '../utils/supabase';
 
 const TOPICS = [
   { id: 'open', emoji: '💬', chinese: '自由对话', english: 'Open Conversation', prompt: null },
@@ -18,26 +19,34 @@ const REGIONS = [
 ];
 
 function SettingsModal({ onClose }) {
-  const existing = getAzureConfig();
-  const [key, setKey] = useState(existing.key);
-  const [region, setRegion] = useState(existing.region || REGIONS[0]);
+  const azureExisting = getAzureConfig();
+  const supabaseExisting = getSupabaseConfig();
+  const [key, setKey] = useState(azureExisting.key);
+  const [region, setRegion] = useState(azureExisting.region || REGIONS[0]);
+  const [sbUrl, setSbUrl] = useState(supabaseExisting.url);
+  const [sbKey, setSbKey] = useState(supabaseExisting.anonKey);
 
   function handleSave(e) {
     e.preventDefault();
     if (!key.trim()) return;
     setAzureConfig(key.trim(), region);
+    if (sbUrl.trim() && sbKey.trim()) {
+      setSupabaseConfig(sbUrl.trim(), sbKey.trim());
+      resetSupabaseClient();
+    }
     onClose();
   }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <form onSubmit={handleSave} className="bg-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4">
+      <form onSubmit={handleSave} className="bg-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-50">Settings</h3>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-200 text-xl cursor-pointer">✕</button>
         </div>
+        <h4 className="text-xs font-medium text-teal-400 uppercase tracking-wider">Azure Speech</h4>
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Azure Speech Key</label>
+          <label className="block text-sm text-slate-400 mb-1">Speech Key</label>
           <input
             type="password"
             value={key}
@@ -47,7 +56,7 @@ function SettingsModal({ onClose }) {
           />
         </div>
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Azure Region</label>
+          <label className="block text-sm text-slate-400 mb-1">Region</label>
           <select
             value={region}
             onChange={e => setRegion(e.target.value)}
@@ -55,6 +64,26 @@ function SettingsModal({ onClose }) {
           >
             {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
+        </div>
+        <h4 className="text-xs font-medium text-teal-400 uppercase tracking-wider pt-2">Supabase</h4>
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Project URL</label>
+          <input
+            type="text"
+            value={sbUrl}
+            onChange={e => setSbUrl(e.target.value)}
+            placeholder="https://xxxxx.supabase.co"
+            className="w-full bg-slate-700 text-slate-50 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-teal-500 placeholder-slate-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Anon Key</label>
+          <input
+            type="password"
+            value={sbKey}
+            onChange={e => setSbKey(e.target.value)}
+            className="w-full bg-slate-700 text-slate-50 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-teal-500 placeholder-slate-500"
+          />
         </div>
         <button
           type="submit"

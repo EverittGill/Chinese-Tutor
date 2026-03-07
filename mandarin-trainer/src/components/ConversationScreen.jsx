@@ -3,8 +3,9 @@ import useAzureSpeech from '../hooks/useAzureSpeech';
 import useAzureTTS from '../hooks/useAzureTTS';
 import useConversation from '../hooks/useConversation';
 import CorrectionPanel from './CorrectionPanel';
+import SessionSummary from './SessionSummary';
+import { createSession, saveExchange, endSession, upsertWord, updateWordStats, recordMistakePattern } from '../utils/db';
 
-// Display modes for AI text
 const DISPLAY_MODES = ['chinese', 'chinese+pinyin', 'chinese+pinyin+english'];
 
 function ScoreBadge({ score }) {
@@ -25,8 +26,20 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
   const [displayMode, setDisplayMode] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
   const [showCorrections, setShowCorrections] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const processingRef = useRef(false);
   const initRef = useRef(false);
+  const sessionIdRef = useRef(null);
+  const turnRef = useRef(0);
+  const exchangeLogRef = useRef([]);
+  const scoresRef = useRef({ accuracies: [], fluencies: [], corrections: [], newWords: [] });
+
+  // Create session on mount
+  useEffect(() => {
+    createSession(topic?.english || 'Open Conversation').then(id => {
+      sessionIdRef.current = id;
+    });
+  }, [topic]);
 
   // For topic mode: AI speaks first
   useEffect(() => {
@@ -41,7 +54,6 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
     }
   }, [topic, sendMessage, speak]);
 
-  // Determine state
   const state = isListening ? 'LISTENING'
     : isLoading ? 'PROCESSING'
     : isSpeaking ? 'SPEAKING'
@@ -54,20 +66,21 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
       setUserText(recognizedText);
       setHasStarted(true);
 
-      if (pronunciationData) {
-        setUserScore(pronunciationData.accuracyScore);
+      const currentPronData = pronunciationData;
+      if (currentPronData) {
+        setUserScore(currentPronData.accuracyScore);
+        scoresRef.current.accuracies.push(currentPronData.accuracyScore);
+        scoresRef.current.fluencies.push(currentPronData.fluencyScore);
       }
 
-      // Build message with pronunciation context if available
       let messageText = recognizedText;
-      if (pronunciationData) {
-        const lowScoreWords = pronunciationData.words
+      if (currentPronData) {
+        const lowScoreWords = currentPronData.words
           .filter(w => w.accuracyScore < 60)
           .map(w => `${w.word} (${w.accuracyScore}/100)`)
           .join(', ');
-
         if (lowScoreWords) {
-          messageText += `\n\n[PRONUNCIATION DATA: Overall accuracy: ${pronunciationData.accuracyScore}/100, Fluency: ${pronunciationData.fluencyScore}/100. Words with low scores: ${lowScoreWords}]`;
+          messageText += `\n\n[PRONUNCIATION DATA: Overall accuracy: ${currentPronData.accuracyScore}/100, Fluency: ${currentPronData.fluencyScore}/100. Words with low scores: ${lowScoreWords}]`;
         }
       }
 
@@ -75,6 +88,48 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
         processingRef.current = false;
         if (response?.response) {
           speak(response.response);
+        }
+
+        // Persist exchange to Supabase
+        turnRef.current += 1;
+        const turn = turnRef.current;
+
+        exchangeLogRef.current.push({
+          userText: recognizedText,
+          pronunciationScore: currentPronData?.accuracyScore,
+          aiResponse: response
+        });
+
+        if (sessionIdRef.current) {
+          saveExchange(sessionIdRef.current, turn, {
+            text: recognizedText,
+            pronunciationScore: currentPronData?.accuracyScore || null,
+            fluencyScore: currentPronData?.fluencyScore || null,
+            wordScores: currentPronData?.words || null
+          }, response);
+        }
+
+        // Update word stats for each word Azure recognized
+        if (currentPronData?.words) {
+          currentPronData.words.forEach(w => {
+            updateWordStats(w.word, w.accuracyScore >= 60, w.accuracyScore);
+          });
+        }
+
+        // Record corrections as mistake patterns
+        if (response?.corrections) {
+          response.corrections.forEach(c => {
+            scoresRef.current.corrections.push(c);
+            recordMistakePattern(c.type, c.explanation, c.original, c.corrected);
+          });
+        }
+
+        // Upsert new vocabulary
+        if (response?.new_vocabulary) {
+          response.new_vocabulary.forEach(v => {
+            scoresRef.current.newWords.push(v);
+            upsertWord(v.word, v.pinyin, v.english, 'conversation');
+          });
         }
       });
     }
@@ -95,10 +150,61 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
     setDisplayMode(prev => (prev + 1) % DISPLAY_MODES.length);
   }, []);
 
+  const handleFinish = useCallback(async () => {
+    const accs = scoresRef.current.accuracies;
+    const flus = scoresRef.current.fluencies;
+    const avgAcc = accs.length > 0 ? Math.round(accs.reduce((a, b) => a + b, 0) / accs.length) : null;
+    const avgFlu = flus.length > 0 ? Math.round(flus.reduce((a, b) => a + b, 0) / flus.length) : null;
+
+    if (sessionIdRef.current) {
+      await endSession(sessionIdRef.current, {
+        exchangeCount: turnRef.current,
+        avgAccuracy: avgAcc,
+        avgFluency: avgFlu,
+        corrections: scoresRef.current.corrections,
+        newWords: scoresRef.current.newWords
+      });
+    }
+
+    if (exchangeLogRef.current.length > 0) {
+      setShowSummary(true);
+    } else {
+      reset();
+      onBack?.();
+    }
+  }, [reset, onBack]);
+
+  const handleSummaryDone = useCallback(async (summaryData) => {
+    // Update session with summary if we got one
+    if (sessionIdRef.current && summaryData) {
+      await endSession(sessionIdRef.current, {
+        exchangeCount: turnRef.current,
+        avgAccuracy: scoresRef.current.accuracies.length > 0
+          ? Math.round(scoresRef.current.accuracies.reduce((a, b) => a + b, 0) / scoresRef.current.accuracies.length) : null,
+        avgFluency: scoresRef.current.fluencies.length > 0
+          ? Math.round(scoresRef.current.fluencies.reduce((a, b) => a + b, 0) / scoresRef.current.fluencies.length) : null,
+        summary: summaryData,
+        corrections: scoresRef.current.corrections,
+        newWords: scoresRef.current.newWords
+      });
+    }
+    reset();
+    onBack?.();
+  }, [reset, onBack]);
+
   const handleBack = useCallback(() => {
     reset();
     onBack?.();
   }, [reset, onBack]);
+
+  if (showSummary) {
+    return (
+      <SessionSummary
+        exchanges={exchangeLogRef.current}
+        onDone={() => handleSummaryDone(null)}
+      />
+    );
+  }
 
   const errorMsg = sttError || ttsError || chatError;
 
@@ -115,7 +221,15 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
           </button>
         )}
         <div className="flex-1" />
-        {topic && (
+        {hasStarted && state === 'IDLE' && (
+          <button
+            onClick={handleFinish}
+            className="text-teal-400 hover:text-teal-300 text-sm font-medium cursor-pointer"
+          >
+            Finish
+          </button>
+        )}
+        {topic && !hasStarted && (
           <span className="text-slate-500 text-sm">{topic.chinese || topic.english}</span>
         )}
       </div>

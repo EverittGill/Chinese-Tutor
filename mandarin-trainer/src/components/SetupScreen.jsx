@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getAzureConfig, setAzureConfig } from '../utils/config';
+import { getAzureConfig, setAzureConfig, getSupabaseConfig, setSupabaseConfig } from '../utils/config';
 
 const REGIONS = [
   'eastus', 'eastus2', 'westus', 'westus2',
@@ -7,14 +7,19 @@ const REGIONS = [
 ];
 
 export default function SetupScreen({ onComplete }) {
-  const existing = getAzureConfig();
-  const [key, setKey] = useState(existing.key);
-  const [region, setRegion] = useState(existing.region || REGIONS[0]);
+  const azureExisting = getAzureConfig();
+  const supabaseExisting = getSupabaseConfig();
+
+  const [azureKey, setAzureKey] = useState(azureExisting.key);
+  const [azureRegion, setAzureRegion] = useState(azureExisting.region || REGIONS[0]);
+  const [supabaseUrl, setSupabaseUrl] = useState(supabaseExisting.url);
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState(supabaseExisting.anonKey);
 
   function handleSave(e) {
     e.preventDefault();
-    if (!key.trim()) return;
-    setAzureConfig(key.trim(), region);
+    if (!azureKey.trim() || !supabaseUrl.trim() || !supabaseAnonKey.trim()) return;
+    setAzureConfig(azureKey.trim(), azureRegion);
+    setSupabaseConfig(supabaseUrl.trim(), supabaseAnonKey.trim());
     onComplete();
   }
 
@@ -26,30 +31,56 @@ export default function SetupScreen({ onComplete }) {
           <p className="text-slate-400">Mandarin Conversation Trainer</p>
         </div>
 
-        <div className="space-y-4">
+        {/* Azure Section */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-teal-400 uppercase tracking-wider">Azure Speech Services</h2>
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Azure Speech Key</label>
+            <label className="block text-sm text-slate-400 mb-1">Speech Key</label>
             <input
               type="password"
-              value={key}
-              onChange={e => setKey(e.target.value)}
+              value={azureKey}
+              onChange={e => setAzureKey(e.target.value)}
               placeholder="Enter your Azure Speech key"
               className="w-full bg-slate-700 text-slate-50 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500 placeholder-slate-500"
               required
             />
           </div>
-
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Azure Region</label>
+            <label className="block text-sm text-slate-400 mb-1">Region</label>
             <select
-              value={region}
-              onChange={e => setRegion(e.target.value)}
+              value={azureRegion}
+              onChange={e => setAzureRegion(e.target.value)}
               className="w-full bg-slate-700 text-slate-50 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500"
             >
-              {REGIONS.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
+              {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
+          </div>
+        </div>
+
+        {/* Supabase Section */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-teal-400 uppercase tracking-wider">Supabase</h2>
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">Project URL</label>
+            <input
+              type="text"
+              value={supabaseUrl}
+              onChange={e => setSupabaseUrl(e.target.value)}
+              placeholder="https://xxxxx.supabase.co"
+              className="w-full bg-slate-700 text-slate-50 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500 placeholder-slate-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">Anon Key</label>
+            <input
+              type="password"
+              value={supabaseAnonKey}
+              onChange={e => setSupabaseAnonKey(e.target.value)}
+              placeholder="Enter your Supabase anon key"
+              className="w-full bg-slate-700 text-slate-50 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500 placeholder-slate-500"
+              required
+            />
           </div>
         </div>
 
