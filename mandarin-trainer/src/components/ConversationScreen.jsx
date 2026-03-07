@@ -26,6 +26,20 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
   const [hasStarted, setHasStarted] = useState(false);
   const [showCorrections, setShowCorrections] = useState(false);
   const processingRef = useRef(false);
+  const initRef = useRef(false);
+
+  // For topic mode: AI speaks first
+  useEffect(() => {
+    if (topic?.prompt && !initRef.current) {
+      initRef.current = true;
+      setHasStarted(true);
+      sendMessage('Start the conversation. Greet me in character for this scenario.').then((response) => {
+        if (response?.response) {
+          speak(response.response);
+        }
+      });
+    }
+  }, [topic, sendMessage, speak]);
 
   // Determine state
   const state = isListening ? 'LISTENING'
