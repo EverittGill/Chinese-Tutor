@@ -6,6 +6,7 @@ export default function useAzureSpeech() {
   const [recognizedText, setRecognizedText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState(null);
+  const [pronunciationData, setPronunciationData] = useState(null);
   const recognizerRef = useRef(null);
 
   const getRecognizer = useCallback(() => {
@@ -16,6 +17,16 @@ export default function useAzureSpeech() {
     speechConfig.speechRecognitionLanguage = 'zh-CN';
     const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
     const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
+
+    // Add pronunciation assessment (unscripted mode)
+    const pronunciationConfig = new sdk.PronunciationAssessmentConfig(
+      "",
+      sdk.PronunciationAssessmentGradingSystem.HundredMark,
+      sdk.PronunciationAssessmentGranularity.Phoneme,
+      true
+    );
+    pronunciationConfig.applyTo(recognizer);
+
     recognizerRef.current = recognizer;
     return recognizer;
   }, []);
@@ -23,6 +34,7 @@ export default function useAzureSpeech() {
   const startListening = useCallback(() => {
     setError(null);
     setIsListening(true);
+    setPronunciationData(null);
 
     const recognizer = getRecognizer();
 
@@ -31,6 +43,37 @@ export default function useAzureSpeech() {
         setIsListening(false);
         if (result.reason === sdk.ResultReason.RecognizedSpeech) {
           setRecognizedText(result.text);
+
+          // Extract pronunciation scores
+          try {
+            const pronResult = sdk.PronunciationAssessmentResult.fromResult(result);
+            const scores = {
+              accuracyScore: Math.round(pronResult.accuracyScore),
+              fluencyScore: Math.round(pronResult.fluencyScore),
+              completenessScore: Math.round(pronResult.completenessScore),
+              pronunciationScore: Math.round(pronResult.pronunciationScore),
+              words: []
+            };
+
+            // Extract per-word scores
+            const detailJson = result.properties.getProperty(
+              sdk.PropertyId.SpeechServiceResponse_JsonResult
+            );
+            if (detailJson) {
+              const detail = JSON.parse(detailJson);
+              const words = detail?.NBest?.[0]?.Words || [];
+              scores.words = words.map(w => ({
+                word: w.Word,
+                accuracyScore: Math.round(w.PronunciationAssessment?.AccuracyScore || 0),
+                errorType: w.PronunciationAssessment?.ErrorType || 'None'
+              }));
+            }
+
+            setPronunciationData(scores);
+          } catch (e) {
+            // Pronunciation data extraction failed — not critical
+            console.warn('Could not extract pronunciation data:', e);
+          }
         } else if (result.reason === sdk.ResultReason.NoMatch) {
           setError('No speech detected. Try again.');
         } else if (result.reason === sdk.ResultReason.Canceled) {
@@ -54,5 +97,5 @@ export default function useAzureSpeech() {
     };
   }, []);
 
-  return { recognizedText, isListening, startListening, error };
+  return { recognizedText, isListening, startListening, error, pronunciationData };
 }

@@ -2,20 +2,29 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import useAzureSpeech from '../hooks/useAzureSpeech';
 import useAzureTTS from '../hooks/useAzureTTS';
 import useConversation from '../hooks/useConversation';
+import CorrectionPanel from './CorrectionPanel';
 
 // Display modes for AI text
 const DISPLAY_MODES = ['chinese', 'chinese+pinyin', 'chinese+pinyin+english'];
 
+function ScoreBadge({ score }) {
+  if (score == null) return null;
+  const color = score >= 80 ? 'text-green-500' : score >= 60 ? 'text-yellow-500' : 'text-red-500';
+  return <span className={`text-sm font-medium ${color}`}>发音: {score}/100</span>;
+}
+
 export default function ConversationScreen({ topic = null, onBack = null }) {
-  const { recognizedText, isListening, startListening, error: sttError } = useAzureSpeech();
+  const { recognizedText, isListening, startListening, error: sttError, pronunciationData } = useAzureSpeech();
   const { speak, isSpeaking, error: ttsError } = useAzureTTS();
   const { sendMessage, aiResponse, isLoading, error: chatError, reset } = useConversation(
     topic?.prompt || null
   );
 
   const [userText, setUserText] = useState('');
+  const [userScore, setUserScore] = useState(null);
   const [displayMode, setDisplayMode] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
+  const [showCorrections, setShowCorrections] = useState(false);
   const processingRef = useRef(false);
 
   // Determine state
@@ -24,21 +33,38 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
     : isSpeaking ? 'SPEAKING'
     : 'IDLE';
 
-  // When speech is recognized, send to Claude
+  // When speech is recognized, send to Claude with pronunciation data
   useEffect(() => {
     if (recognizedText && !processingRef.current) {
       processingRef.current = true;
       setUserText(recognizedText);
       setHasStarted(true);
 
-      sendMessage(recognizedText).then((response) => {
+      if (pronunciationData) {
+        setUserScore(pronunciationData.accuracyScore);
+      }
+
+      // Build message with pronunciation context if available
+      let messageText = recognizedText;
+      if (pronunciationData) {
+        const lowScoreWords = pronunciationData.words
+          .filter(w => w.accuracyScore < 60)
+          .map(w => `${w.word} (${w.accuracyScore}/100)`)
+          .join(', ');
+
+        if (lowScoreWords) {
+          messageText += `\n\n[PRONUNCIATION DATA: Overall accuracy: ${pronunciationData.accuracyScore}/100, Fluency: ${pronunciationData.fluencyScore}/100. Words with low scores: ${lowScoreWords}]`;
+        }
+      }
+
+      sendMessage(messageText).then((response) => {
         processingRef.current = false;
         if (response?.response) {
           speak(response.response);
         }
       });
     }
-  }, [recognizedText, sendMessage, speak]);
+  }, [recognizedText, pronunciationData, sendMessage, speak]);
 
   const handleMicTap = useCallback(() => {
     if (state !== 'IDLE') return;
@@ -123,10 +149,15 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
           </button>
         )}
 
-        {/* User text */}
+        {/* User text with pronunciation score */}
         {userText && (
           <div className="bg-slate-800/50 rounded-xl p-4 w-full max-w-md">
             <p className="text-slate-300 text-center">{userText}</p>
+            {userScore != null && (
+              <div className="text-center mt-2">
+                <ScoreBadge score={userScore} />
+              </div>
+            )}
           </div>
         )}
 
@@ -135,6 +166,28 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
           <p className="text-red-400 text-sm text-center max-w-md">{errorMsg}</p>
         )}
       </div>
+
+      {/* Corrections badge */}
+      {aiResponse && (aiResponse.corrections?.length > 0 || aiResponse.new_vocabulary?.length > 0) && (
+        <div className="flex justify-center pb-2">
+          <button
+            onClick={() => setShowCorrections(true)}
+            className="text-slate-400 hover:text-teal-400 text-sm cursor-pointer"
+          >
+            📝 {aiResponse.corrections.length} correction{aiResponse.corrections.length !== 1 ? 's' : ''}
+            {aiResponse.new_vocabulary?.length > 0 && ` · ${aiResponse.new_vocabulary.length} new word`}
+          </button>
+        </div>
+      )}
+
+      {/* Corrections panel */}
+      {showCorrections && aiResponse && (
+        <CorrectionPanel
+          corrections={aiResponse.corrections || []}
+          newVocabulary={aiResponse.new_vocabulary || []}
+          onClose={() => setShowCorrections(false)}
+        />
+      )}
 
       {/* Mic Button */}
       <div className="flex justify-center pb-12 pt-4">
