@@ -39,6 +39,24 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
   const exchangeLogRef = useRef([]);
   const scoresRef = useRef({ accuracies: [], fluencies: [], corrections: [], newWords: [] });
 
+  const [errorToast, setErrorToast] = useState(null);
+
+  // Screen wake lock
+  useEffect(() => {
+    let wakeLock = null;
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (e) {
+        // Wake lock not supported or denied — not critical
+      }
+    }
+    requestWakeLock();
+    return () => { wakeLock?.release(); };
+  }, []);
+
   // Load vocabulary context on mount
   useEffect(() => {
     async function loadVocabContext() {
@@ -238,8 +256,26 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
 
   const errorMsg = sttError || ttsError || chatError;
 
+  // Show error as dismissible toast
+  useEffect(() => {
+    if (errorMsg) {
+      setErrorToast(errorMsg);
+      const timer = setTimeout(() => setErrorToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMsg]);
+
   return (
     <div className="h-dvh bg-slate-900 flex flex-col">
+      {/* Error toast */}
+      {errorToast && (
+        <div className="absolute top-4 left-4 right-4 z-50 animate-toast">
+          <div className="bg-red-900/90 text-red-200 rounded-lg px-4 py-3 text-sm flex items-center justify-between">
+            <span>{errorToast}</span>
+            <button onClick={() => setErrorToast(null)} className="text-red-300 hover:text-red-100 ml-2 cursor-pointer">✕</button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         {onBack && (
@@ -275,7 +311,7 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
               点击麦克风开始说话
             </p>
           ) : aiResponse ? (
-            <div className="space-y-2">
+            <div className="space-y-2 animate-fade-in">
               <p className="text-2xl text-slate-50 text-center leading-relaxed">
                 {aiResponse.response}
               </p>
@@ -309,7 +345,7 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
 
         {/* User text with pronunciation score */}
         {userText && (
-          <div className="bg-slate-800/50 rounded-xl p-4 w-full max-w-md">
+          <div className="bg-slate-800/50 rounded-xl p-4 w-full max-w-md animate-fade-in">
             <p className="text-slate-300 text-center">{userText}</p>
             {userScore != null && (
               <div className="text-center mt-2">
@@ -319,10 +355,6 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
           </div>
         )}
 
-        {/* Error display */}
-        {errorMsg && (
-          <p className="text-red-400 text-sm text-center max-w-md">{errorMsg}</p>
-        )}
       </div>
 
       {/* Corrections badge */}
@@ -352,16 +384,16 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
         <button
           onClick={handleMicTap}
           disabled={state !== 'IDLE'}
-          className={`w-20 h-20 rounded-full flex items-center justify-center transition-all cursor-pointer
+          className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all cursor-pointer
             ${state === 'LISTENING'
-              ? 'bg-red-500 scale-110'
+              ? 'bg-red-500 scale-110 mic-pulse'
               : state === 'PROCESSING'
               ? 'bg-slate-700'
               : state === 'SPEAKING'
               ? 'bg-slate-700'
               : 'bg-slate-700 hover:bg-slate-600 active:scale-95'
             }
-            ${state !== 'IDLE' ? 'opacity-70 cursor-not-allowed' : ''}
+            ${state !== 'IDLE' ? 'cursor-not-allowed' : ''}
           `}
         >
           {state === 'PROCESSING' ? (
