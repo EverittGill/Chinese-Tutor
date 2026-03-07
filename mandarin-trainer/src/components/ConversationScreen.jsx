@@ -4,7 +4,8 @@ import useAzureTTS from '../hooks/useAzureTTS';
 import useConversation from '../hooks/useConversation';
 import CorrectionPanel from './CorrectionPanel';
 import SessionSummary from './SessionSummary';
-import { createSession, saveExchange, endSession, upsertWord, updateWordStats, recordMistakePattern } from '../utils/db';
+import { createSession, saveExchange, endSession, upsertWord, updateWordStats, recordMistakePattern, getVocabulary, getMistakePatterns } from '../utils/db';
+import { formatVocabularyContext } from '../utils/claudePrompt';
 
 const DISPLAY_MODES = ['chinese', 'chinese+pinyin', 'chinese+pinyin+english'];
 
@@ -15,10 +16,14 @@ function ScoreBadge({ score }) {
 }
 
 export default function ConversationScreen({ topic = null, onBack = null }) {
+  const [vocabContext, setVocabContext] = useState(null);
+  const [vocabLoaded, setVocabLoaded] = useState(false);
+
   const { recognizedText, isListening, startListening, error: sttError, pronunciationData } = useAzureSpeech();
   const { speak, isSpeaking, error: ttsError } = useAzureTTS();
   const { sendMessage, aiResponse, isLoading, error: chatError, reset } = useConversation(
-    topic?.prompt || null
+    topic?.prompt || null,
+    vocabContext
   );
 
   const [userText, setUserText] = useState('');
@@ -34,6 +39,31 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
   const exchangeLogRef = useRef([]);
   const scoresRef = useRef({ accuracies: [], fluencies: [], corrections: [], newWords: [] });
 
+  // Load vocabulary context on mount
+  useEffect(() => {
+    async function loadVocabContext() {
+      try {
+        const [known, learning, newWords, mistakes] = await Promise.all([
+          getVocabulary('known'),
+          getVocabulary('learning'),
+          getVocabulary('new'),
+          getMistakePatterns(5)
+        ]);
+        const context = formatVocabularyContext(
+          known.slice(0, 50),
+          learning.slice(0, 20),
+          newWords.slice(0, 10),
+          mistakes
+        );
+        setVocabContext(context);
+      } catch (e) {
+        console.warn('Could not load vocabulary context:', e);
+      }
+      setVocabLoaded(true);
+    }
+    loadVocabContext();
+  }, []);
+
   // Create session on mount
   useEffect(() => {
     createSession(topic?.english || 'Open Conversation').then(id => {
@@ -41,9 +71,9 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
     });
   }, [topic]);
 
-  // For topic mode: AI speaks first
+  // For topic mode: AI speaks first (wait for vocab context)
   useEffect(() => {
-    if (topic?.prompt && !initRef.current) {
+    if (topic?.prompt && !initRef.current && vocabLoaded) {
       initRef.current = true;
       setHasStarted(true);
       sendMessage('Start the conversation. Greet me in character for this scenario.').then((response) => {
@@ -52,7 +82,7 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
         }
       });
     }
-  }, [topic, sendMessage, speak]);
+  }, [topic, sendMessage, speak, vocabLoaded]);
 
   const state = isListening ? 'LISTENING'
     : isLoading ? 'PROCESSING'

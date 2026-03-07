@@ -28,3 +28,21 @@ NEW VOCABULARY RULES:
 
 If you cannot understand the user at all, respond asking them to repeat: "对不起，我没听清楚，你能再说一遍吗？"`;
 }
+
+export function formatVocabularyContext(knownWords, learningWords, nextWords, mistakePatterns) {
+  let context = '';
+
+  if (knownWords.length > 0)
+    context += `KNOWN VOCABULARY (use freely): ${knownWords.map(w => w.word).join(', ')}\n\n`;
+
+  if (learningWords.length > 0)
+    context += `LEARNING VOCABULARY (weave in for practice): ${learningWords.map(w => `${w.word} (${w.english})`).join(', ')}\n\n`;
+
+  if (nextWords.length > 0)
+    context += `INTRODUCE NEXT (introduce ONE when natural): ${nextWords.map(w => `${w.word} (${w.english})`).join(', ')}\n\n`;
+
+  if (mistakePatterns.length > 0)
+    context += `COMMON MISTAKES (create practice opportunities):\n${mistakePatterns.map(p => `- ${p.description}`).join('\n')}\n\n`;
+
+  return context || null;
+}

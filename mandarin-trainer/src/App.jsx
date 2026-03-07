@@ -4,6 +4,7 @@ import SetupScreen from './components/SetupScreen';
 import TopicSelector from './components/TopicSelector';
 import ConversationScreen from './components/ConversationScreen';
 import VocabScreen from './components/VocabScreen';
+import Dashboard from './components/Dashboard';
 
 export default function App() {
   const [configured, setConfigured] = useState(hasAllConfig());
@@ -40,6 +41,10 @@ export default function App() {
 
   if (screen === 'vocab') {
     return <VocabScreen onBack={() => setScreen('topics')} />;
+  }
+
+  if (screen === 'dashboard') {
+    return <Dashboard onBack={() => setScreen('topics')} />;
   }
 
   return null;
