@@ -39,9 +39,37 @@ const conversationTools = [{
           },
           required: ["word", "pinyin", "english", "context"]
         }
+      },
+      user_pinyin: { type: "string", description: "Pinyin transcription of the user's input" },
+      user_english: { type: "string", description: "Natural English translation of what the user said" },
+      user_words: {
+        type: "array",
+        description: "Word-by-word breakdown of the user's input",
+        items: {
+          type: "object",
+          properties: {
+            chinese: { type: "string" },
+            pinyin: { type: "string" },
+            english: { type: "string" }
+          },
+          required: ["chinese", "pinyin", "english"]
+        }
+      },
+      words: {
+        type: "array",
+        description: "Word-by-word breakdown of the response in order",
+        items: {
+          type: "object",
+          properties: {
+            chinese: { type: "string" },
+            pinyin: { type: "string" },
+            english: { type: "string" }
+          },
+          required: ["chinese", "pinyin", "english"]
+        }
       }
     },
-    required: ["response", "pinyin", "english", "corrections", "new_vocabulary"]
+    required: ["response", "pinyin", "english", "corrections", "new_vocabulary", "words", "user_pinyin", "user_english", "user_words"]
   }
 }];
 
@@ -52,7 +80,7 @@ export default async function handler(req, res) {
     const { messages, systemPrompt, maxTokens, tools: clientTools } = req.body;
 
     const requestParams = {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: maxTokens || 1024,
       system: systemPrompt,
       messages,

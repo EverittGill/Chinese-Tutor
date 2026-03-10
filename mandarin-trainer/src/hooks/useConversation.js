@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
-import { getSystemPrompt } from '../utils/claudePrompt';
+import { getSystemPrompt, getReviewSystemPrompt } from '../utils/claudePrompt';
 
-export default function useConversation(topic = null, vocabularyContext = null) {
+export default function useConversation(topic = null, vocabularyContext = null, mode = 'normal') {
   const [aiResponse, setAiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -19,7 +19,9 @@ export default function useConversation(topic = null, vocabularyContext = null) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: messagesRef.current,
-          systemPrompt: getSystemPrompt(topic, vocabularyContext),
+          systemPrompt: mode === 'review'
+            ? getReviewSystemPrompt(vocabularyContext)
+            : getSystemPrompt(topic, vocabularyContext),
           maxTokens: 1024
         })
       });
@@ -50,7 +52,7 @@ export default function useConversation(topic = null, vocabularyContext = null) 
     } finally {
       setIsLoading(false);
     }
-  }, [topic, vocabularyContext]);
+  }, [topic, vocabularyContext, mode]);
 
   const reset = useCallback(() => {
     messagesRef.current = [];

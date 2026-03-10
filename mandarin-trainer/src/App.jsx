@@ -5,6 +5,7 @@ import TopicSelector from './components/TopicSelector';
 import ConversationScreen from './components/ConversationScreen';
 import VocabScreen from './components/VocabScreen';
 import Dashboard from './components/Dashboard';
+import FlashcardScreen from './components/FlashcardScreen';
 
 export default function App() {
   const [configured, setConfigured] = useState(hasAllConfig());
@@ -45,6 +46,10 @@ export default function App() {
 
   if (screen === 'dashboard') {
     return <Dashboard onBack={() => setScreen('topics')} />;
+  }
+
+  if (screen === 'flashcards') {
+    return <FlashcardScreen onBack={() => setScreen('topics')} />;
   }
 
   return null;

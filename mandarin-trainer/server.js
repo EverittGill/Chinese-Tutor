@@ -46,9 +46,37 @@ const conversationTools = [{
           },
           required: ["word", "pinyin", "english", "context"]
         }
+      },
+      user_pinyin: { type: "string", description: "Pinyin transcription of the user's input" },
+      user_english: { type: "string", description: "Natural English translation of what the user said" },
+      user_words: {
+        type: "array",
+        description: "Word-by-word breakdown of the user's input",
+        items: {
+          type: "object",
+          properties: {
+            chinese: { type: "string" },
+            pinyin: { type: "string" },
+            english: { type: "string" }
+          },
+          required: ["chinese", "pinyin", "english"]
+        }
+      },
+      words: {
+        type: "array",
+        description: "Word-by-word breakdown of the response in order",
+        items: {
+          type: "object",
+          properties: {
+            chinese: { type: "string" },
+            pinyin: { type: "string" },
+            english: { type: "string" }
+          },
+          required: ["chinese", "pinyin", "english"]
+        }
       }
     },
-    required: ["response", "pinyin", "english", "corrections", "new_vocabulary"]
+    required: ["response", "pinyin", "english", "corrections", "new_vocabulary", "words", "user_pinyin", "user_english", "user_words"]
   }
 }];
 
@@ -57,7 +85,7 @@ app.post('/api/chat', async (req, res) => {
     const { messages, systemPrompt, maxTokens, tools: clientTools } = req.body;
 
     const requestParams = {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: maxTokens || 1024,
       system: systemPrompt,
       messages,
@@ -81,6 +109,34 @@ app.post('/api/chat', async (req, res) => {
     }
   } catch (err) {
     console.error('Claude API error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Azure Speech token endpoint — keeps the subscription key server-side
+app.get('/api/speech-token', async (req, res) => {
+  const key = process.env.AZURE_SPEECH_KEY;
+  const region = process.env.AZURE_SPEECH_REGION;
+  if (!key || !region) {
+    return res.json({ token: null, region: null });
+  }
+
+  try {
+    const tokenRes = await fetch(
+      `https://${region}.api.cognitive.microsoft.com/sts/v1.0/issueToken`,
+      {
+        method: 'POST',
+        headers: {
+          'Ocp-Apim-Subscription-Key': key,
+          'Content-Length': '0'
+        }
+      }
+    );
+    if (!tokenRes.ok) throw new Error(`Token request failed: ${tokenRes.status}`);
+    const token = await tokenRes.text();
+    res.json({ token, region });
+  } catch (err) {
+    console.error('Speech token error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
