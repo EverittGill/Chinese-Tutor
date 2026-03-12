@@ -1,4 +1,4 @@
-# Bugs To Fix
+# Bugs To Fix — COMPLETED (2026-03-10, commit 409c9a5)
 
 ## 1. Inconsistent pinyin/english on AI responses
 **Symptom:** Some AI bubbles show full word-by-word breakdown (pinyin above characters, clickable words) while others show plain text with no pinyin or interactivity.
@@ -12,6 +12,8 @@
 - D) Combination: strengthen prompt (C) + client fallback (B) as safety net
 
 **Priority:** High — this breaks the core learning UX
+
+**Status:** FIXED — Strengthened Claude prompt with CRITICAL instruction + added `<ruby>` fallback in ChatBubble when words array is missing. Skipped server-side retry (not worth the complexity for a personal app).
 
 ## 2. Audio detection drops recognized speech
 **Symptom:** User holds mic button, sees characters appear (interim text from Azure), but when releasing the button gets "No speech detected." The interim text disappears and nothing is sent.
@@ -28,6 +30,8 @@
 
 **Priority:** High — this makes the app frustrating to use
 
+**Status:** FIXED — Rewrote stopListening with three-path logic: Path A (immediate harvest when recognized already fired), Path B (800ms wait for pronunciation scoring + interim text fallback), Path C (no speech). Added stoppingRef to prevent double-stop on iOS.
+
 ## 3. User pinyin/english inconsistent on user bubbles
 **Symptom:** Some user bubbles show pinyin + english translation, others don't.
 
@@ -37,6 +41,8 @@
 
 **Priority:** Medium — tied to #1
 
+**Status:** FIXED — same fix as #1
+
 ## 4. AI response sometimes missing word breakdown entirely
 **Symptom:** Last AI bubble in screenshot shows "好的，明白了！那你们要牛肉火锅吗？要几份？" as plain text — no pinyin, no clickable words.
 
@@ -45,3 +51,5 @@
 **Fix:** Same as #1
 
 **Priority:** High — same as #1
+
+**Status:** FIXED — same fix as #1

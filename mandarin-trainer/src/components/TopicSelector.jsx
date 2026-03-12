@@ -1,6 +1,7 @@
 const TOPICS = [
   { id: 'open', emoji: '💬', chinese: '自由对话', english: 'Open Conversation', prompt: null },
   { id: 'review', emoji: '🔄', chinese: '复习模式', english: 'Review Mode', prompt: '__review__' },
+  { id: 'teacher', emoji: '👨‍🏫', chinese: '老师模式', english: 'Teacher Mode', prompt: '__teacher__' },
   { id: 'restaurant', emoji: '🍜', chinese: '餐厅点餐', english: 'Restaurant', prompt: 'Ordering food at a Chinese restaurant. You are the waiter.' },
   { id: 'shopping', emoji: '🛍️', chinese: '商店购物', english: 'Shopping', prompt: 'Shopping at a store in China. You are the shopkeeper.' },
   { id: 'directions', emoji: '🗺️', chinese: '问路', english: 'Directions', prompt: 'The user is lost and asking for directions on a street in China. You are a helpful passerby.' },
@@ -13,7 +14,8 @@ const TOPICS = [
 export default function TopicSelector({ onSelectTopic, onNavigate }) {
   const openTopic = TOPICS[0];
   const reviewTopic = TOPICS[1];
-  const scenarioTopics = TOPICS.slice(2);
+  const teacherTopic = TOPICS[2];
+  const scenarioTopics = TOPICS.slice(3);
 
   return (
     <div className="min-h-dvh bg-slate-900 p-6">
@@ -42,6 +44,16 @@ export default function TopicSelector({ onSelectTopic, onNavigate }) {
           <span className="text-2xl mr-3">{reviewTopic.emoji}</span>
           <span className="text-lg text-slate-50">{reviewTopic.chinese}</span>
           <span className="text-sm text-teal-400 ml-2">{reviewTopic.english}</span>
+        </button>
+
+        {/* Teacher mode - full width */}
+        <button
+          onClick={() => onSelectTopic(teacherTopic)}
+          className="w-full bg-amber-900/40 hover:bg-amber-900/60 border border-amber-700/50 rounded-2xl p-5 text-left transition-colors cursor-pointer"
+        >
+          <span className="text-2xl mr-3">{teacherTopic.emoji}</span>
+          <span className="text-lg text-slate-50">{teacherTopic.chinese}</span>
+          <span className="text-sm text-amber-400 ml-2">{teacherTopic.english}</span>
         </button>
 
         {/* Scenario topics - 2 column grid */}

@@ -21,7 +21,7 @@ function PronunciationWord({ word, pronScore }) {
   );
 }
 
-export default function ChatBubble({ type, text, userWords, userPinyin, userEnglish, aiResponse, score, displayMode, onSpeak, onSpeakSlow, onShowCorrections, wordScores }) {
+export default function ChatBubble({ type, text, userWords, userPinyin, userEnglish, aiResponse, score, displayMode, isTeacher, onSpeak, onSpeakSlow, onShowCorrections, wordScores }) {
   const [activeWord, setActiveWord] = useState(null);
 
   const handleWordTap = useCallback((word) => {
@@ -88,8 +88,8 @@ export default function ChatBubble({ type, text, userWords, userPinyin, userEngl
 
   return (
     <div className="flex justify-start items-end gap-2 animate-fade-in">
-      <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center shrink-0 text-xs text-white font-medium">
-        林
+      <div className={`w-8 h-8 rounded-full ${isTeacher ? 'bg-amber-700' : 'bg-slate-600'} flex items-center justify-center shrink-0 text-xs text-white font-medium`}>
+        {isTeacher ? '王' : '林'}
       </div>
       <div className="chat-bubble chat-bubble-ai">
         <p className="text-slate-50 text-[15px] leading-relaxed">
@@ -111,6 +111,13 @@ export default function ChatBubble({ type, text, userWords, userPinyin, userEngl
         </p>
         {displayMode >= 2 && aiResponse?.english && (
           <p className="text-slate-400 text-xs mt-1.5 italic">{aiResponse.english}</p>
+        )}
+        {aiResponse?.teaching_notes && (
+          <div className="mt-2 pt-2 border-t border-slate-700">
+            <p className="text-xs text-amber-200/90 leading-relaxed whitespace-pre-line">
+              {aiResponse.teaching_notes}
+            </p>
+          </div>
         )}
         <div className="flex items-center gap-3 mt-1.5">
           {onSpeak && (

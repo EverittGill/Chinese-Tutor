@@ -1,4 +1,4 @@
-# Plan: Fix Speech Detection & Inconsistent Word Breakdown
+# Plan: Fix Speech Detection & Inconsistent Word Breakdown — COMPLETED (2026-03-10)
 
 ## Context
 Testing revealed two high-priority bugs that make the app frustrating to use:

@@ -6,21 +6,26 @@ import ChatBubble from './ChatBubble';
 import CorrectionPanel from './CorrectionPanel';
 import SessionSummary from './SessionSummary';
 import { createSession, saveExchange, endSession, upsertWord, updateWordStats, recordMistakePattern, getVocabulary, getMistakePatterns } from '../utils/db';
-import { formatVocabularyContext } from '../utils/claudePrompt';
+import { formatVocabularyContext, formatLevelContext } from '../utils/claudePrompt';
 
 const DISPLAY_MODES = ['chinese', 'chinese+pinyin', 'chinese+pinyin+english'];
 
 export default function ConversationScreen({ topic = null, onBack = null }) {
   const isReview = topic?.prompt === '__review__';
+  const isTeacher = topic?.prompt === '__teacher__';
   const [vocabContext, setVocabContext] = useState(null);
+  const [levelContext, setLevelContext] = useState(null);
   const [vocabLoaded, setVocabLoaded] = useState(false);
+
+  const mode = isTeacher ? 'teacher' : isReview ? 'review' : 'normal';
 
   const { recognizedText, turnId, interimText, isListening, startListening, stopListening, error: sttError, pronunciationData } = useAzureSpeech();
   const { speak, isSpeaking, error: ttsError } = useAzureTTS();
   const { sendMessage, aiResponse, isLoading, error: chatError, reset } = useConversation(
-    isReview ? null : (topic?.prompt || null),
+    (isReview || isTeacher) ? null : (topic?.prompt || null),
     vocabContext,
-    isReview ? 'review' : 'normal'
+    mode,
+    levelContext
   );
 
   const [chatHistory, setChatHistory] = useState([]);
@@ -61,28 +66,41 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
   useEffect(() => {
     async function loadVocabContext() {
       try {
+        const mistakeCount = isTeacher ? 10 : 5;
         const [known, learning, newWords, mistakes] = await Promise.all([
           getVocabulary('known'),
           getVocabulary('learning'),
           getVocabulary('new'),
-          getMistakePatterns(5)
+          getMistakePatterns(mistakeCount)
         ]);
-        const context = isReview
-          ? formatVocabularyContext(known, learning, [], [])
-          : formatVocabularyContext(
-              known.slice(0, 50),
-              learning.slice(0, 20),
-              newWords.slice(0, 10),
-              mistakes
-            );
-        setVocabContext(context);
+
+        if (isTeacher) {
+          // Teacher mode: full vocab context + level context
+          const context = formatVocabularyContext(
+            known.slice(0, 50),
+            learning.slice(0, 20),
+            newWords.slice(0, 10),
+            mistakes
+          );
+          setVocabContext(context);
+          setLevelContext(formatLevelContext(known, learning, mistakes, null));
+        } else if (isReview) {
+          setVocabContext(formatVocabularyContext(known, learning, [], []));
+        } else {
+          setVocabContext(formatVocabularyContext(
+            known.slice(0, 50),
+            learning.slice(0, 20),
+            newWords.slice(0, 10),
+            mistakes
+          ));
+        }
       } catch (e) {
         console.warn('Could not load vocabulary context:', e);
       }
       setVocabLoaded(true);
     }
     loadVocabContext();
-  }, [isReview]);
+  }, [isReview, isTeacher]);
 
   // Create session on mount
   useEffect(() => {
@@ -91,9 +109,9 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
     });
   }, [topic]);
 
-  // For topic/review mode: AI speaks first (wait for vocab context)
+  // For topic/review/teacher mode: AI speaks first (wait for vocab context)
   useEffect(() => {
-    if ((topic?.prompt || isReview) && !initRef.current && vocabLoaded) {
+    if ((topic?.prompt || isReview || isTeacher) && !initRef.current && vocabLoaded) {
       initRef.current = true;
       setHasStarted(true);
       sendMessage('Start the conversation. Greet me in character for this scenario.').then((response) => {
@@ -103,7 +121,7 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
         }
       });
     }
-  }, [topic, sendMessage, speak, vocabLoaded]);
+  }, [topic, sendMessage, speak, vocabLoaded, isReview, isTeacher]);
 
   const state = isListening ? 'LISTENING'
     : isLoading ? 'PROCESSING'
@@ -183,8 +201,8 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
           });
         }
 
-        // Upsert new vocabulary with context sentence
-        if (response?.new_vocabulary) {
+        // Upsert new vocabulary with context sentence (skip in review mode)
+        if (!isReview && response?.new_vocabulary) {
           response.new_vocabulary.forEach(v => {
             scoresRef.current.newWords.push(v);
             upsertWord(v.word, v.pinyin, v.english, 'conversation', v.context || null);
@@ -339,6 +357,7 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
                 type="ai"
                 aiResponse={entry.aiResponse}
                 displayMode={displayMode}
+                isTeacher={isTeacher}
                 onSpeak={() => speak(entry.aiResponse.response)}
                 onSpeakSlow={() => speak(entry.aiResponse.response, 0.7)}
                 onShowCorrections={
@@ -350,8 +369,8 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
             ) : (
               // Loading indicator for pending AI response
               <div className="flex justify-start items-end gap-2">
-                <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center shrink-0 text-xs text-white font-medium">
-                  林
+                <div className={`w-8 h-8 rounded-full ${isTeacher ? 'bg-amber-700' : 'bg-slate-600'} flex items-center justify-center shrink-0 text-xs text-white font-medium`}>
+                  {isTeacher ? '王' : '林'}
                 </div>
                 <div className="chat-bubble chat-bubble-ai">
                   <div className="flex gap-1 py-1">
@@ -377,8 +396,8 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
         {/* Initial loading spinner for topic greeting */}
         {isLoading && chatHistory.length === 0 && (
           <div className="flex justify-start items-end gap-2">
-            <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center shrink-0 text-xs text-white font-medium">
-              林
+            <div className={`w-8 h-8 rounded-full ${isTeacher ? 'bg-amber-700' : 'bg-slate-600'} flex items-center justify-center shrink-0 text-xs text-white font-medium`}>
+              {isTeacher ? '王' : '林'}
             </div>
             <div className="chat-bubble chat-bubble-ai">
               <div className="flex gap-1 py-1">

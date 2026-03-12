@@ -150,6 +150,8 @@ function useAzureRecognition() {
     return sdkRef.current;
   }, []);
 
+  const streamRef = useRef(null);
+
   const startListening = useCallback(async () => {
     setError(null);
     setIsListening(true);
@@ -164,6 +166,10 @@ function useAzureRecognition() {
     }
 
     try {
+      // Acquire mic in the user-gesture context (required for iOS Safari)
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = micStream;
+
       const sdk = await getSdk();
       const tokenData = await getAzureSpeechToken();
       if (!tokenData) {
@@ -176,7 +182,7 @@ function useAzureRecognition() {
       speechConfig.setProperty("Speech_SegmentationSilenceTimeoutMs", "3000");
       // Keep session alive for up to 2 min of silence — user controls end via button release
       speechConfig.setProperty("SpeechServiceConnection_EndSilenceTimeoutMs", "120000");
-      const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
+      const audioConfig = sdk.AudioConfig.fromStreamInput(micStream);
       const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
 
       const pronunciationConfig = new sdk.PronunciationAssessmentConfig(
@@ -297,6 +303,10 @@ function useAzureRecognition() {
           recognizer.close();
           recognizerRef.current = null;
           stoppingRef.current = false;
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+            streamRef.current = null;
+          }
           return;
         }
 
@@ -320,6 +330,10 @@ function useAzureRecognition() {
             recognizer.close();
             recognizerRef.current = null;
             stoppingRef.current = false;
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(t => t.stop());
+              streamRef.current = null;
+            }
           }, 800);
           return;
         }
@@ -330,6 +344,10 @@ function useAzureRecognition() {
         recognizer.close();
         recognizerRef.current = null;
         stoppingRef.current = false;
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+        }
       },
       (err) => {
         setIsListening(false);
@@ -348,6 +366,10 @@ function useAzureRecognition() {
       if (recognizerRef.current) {
         recognizerRef.current.close();
         recognizerRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
       }
     };
   }, []);

@@ -67,6 +67,10 @@ const conversationTools = [{
           },
           required: ["chinese", "pinyin", "english"]
         }
+      },
+      teaching_notes: {
+        type: "string",
+        description: "English teaching notes: grammar explanations, pattern tips, level observations, encouragement. 1-3 sentences. Teacher mode only."
       }
     },
     required: ["response", "pinyin", "english", "corrections", "new_vocabulary", "words", "user_pinyin", "user_english", "user_words"]
