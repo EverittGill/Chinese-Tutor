@@ -1,9 +1,33 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-400: #D4B8A5;
+  --color-brand-500: #C4A08B;
+  --color-brand-600: #BE8F6A;
+  --color-brand-700: #A67B55;
+
+  --color-warm-50: #FDFCFA;
+  --color-warm-100: #F8F6F2;
+  --color-warm-200: #F0EDEA;
+  --color-warm-300: #E7E3DF;
+  --color-warm-400: #DDD8D2;
+  --color-warm-500: #C9C3BB;
+  --color-warm-600: #A8A19A;
+  --color-warm-700: #73706A;
+  --color-warm-800: #4A473F;
+  --color-warm-900: #2A271F;
+
+  --color-olive-500: #6B8E5A;
+  --color-olive-700: #4A6B3A;
+
+  --shadow-soft: 0 2px 8px rgba(42, 39, 31, 0.08);
+  --shadow-md: 0 4px 12px rgba(42, 39, 31, 0.12);
+}
+
 body {
   margin: 0;
-  background-color: #0f172a;
-  color: #f8fafc;
+  background-color: #FDFCFA;
+  color: #2A271F;
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
@@ -75,13 +99,14 @@ html, body {
 }
 
 .chat-bubble-user {
-  background-color: #07c160;
+  background-color: #6B8E5A;
   border-bottom-right-radius: 4px;
 }
 
 .chat-bubble-ai {
-  background-color: #334155;
+  background-color: #F8F6F2;
   border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 4px rgba(42, 39, 31, 0.08);
 }
 
 /* Ruby text: pinyin above characters, same size */
@@ -106,7 +131,7 @@ rt {
 }
 
 .clickable-word:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(42, 39, 31, 0.06);
 }
 
 /* Word popover */
@@ -115,8 +140,8 @@ rt {
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  background: #1e293b;
-  border: 1px solid #475569;
+  background: #FDFCFA;
+  border: 1px solid #E7E3DF;
   border-radius: 8px;
   padding: 6px 10px;
   display: flex;
@@ -126,7 +151,7 @@ rt {
   white-space: nowrap;
   z-index: 50;
   font-size: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(42, 39, 31, 0.12);
   animation: fade-in 0.15s ease-out;
 }
 
@@ -137,14 +162,14 @@ rt {
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #475569;
+  border-top-color: #E7E3DF;
 }
 
 /* Pronunciation score coloring for user words */
-.pron-good { color: #86efac; } /* green-300 */
-.pron-ok { color: #fde047; }   /* yellow-300 */
-.pron-bad { color: #fca5a5; }  /* red-300 */
+.pron-good { color: #689F38; }
+.pron-ok { color: #F57C00; }
+.pron-bad { color: #D32F2F; }
 
-.pron-good ruby rt { color: #86efac; }
-.pron-ok ruby rt { color: #fde047; }
-.pron-bad ruby rt { color: #fca5a5; }
+.pron-good ruby rt { color: #689F38; }
+.pron-ok ruby rt { color: #F57C00; }
+.pron-bad ruby rt { color: #D32F2F; }

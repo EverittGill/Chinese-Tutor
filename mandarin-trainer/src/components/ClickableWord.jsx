@@ -28,17 +28,17 @@ export default function ClickableWord({ word, isActive, onTap, displayMode, pron
       {displayMode >= 1 ? (
         <ruby>
           {word.chinese}
-          <rp>(</rp><rt className="text-teal-400">{word.pinyin}</rt><rp>)</rp>
+          <rp>(</rp><rt className="text-brand-600">{word.pinyin}</rt><rp>)</rp>
         </ruby>
       ) : (
         word.chinese
       )}
       {isActive && (
         <span className="word-popover">
-          <span className="font-medium text-teal-300">{word.pinyin}</span>
-          <span className="text-slate-300">{word.english}</span>
+          <span className="font-medium text-brand-600">{word.pinyin}</span>
+          <span className="text-warm-700">{word.english}</span>
           {pronScore != null && (
-            <span className={`text-xs ${pronScore >= 80 ? 'text-green-400' : pronScore >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+            <span className={`text-xs ${pronScore >= 80 ? 'text-green-700' : pronScore >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
               {pronScore}/100
             </span>
           )}

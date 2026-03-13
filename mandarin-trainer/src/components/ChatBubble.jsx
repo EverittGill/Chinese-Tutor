@@ -3,16 +3,16 @@ import ClickableWord from './ClickableWord';
 
 function ScoreBadge({ score }) {
   if (score == null) return null;
-  const color = score >= 80 ? 'text-green-500' : score >= 60 ? 'text-yellow-500' : 'text-red-500';
+  const color = score >= 80 ? 'text-green-600' : score >= 60 ? 'text-amber-600' : 'text-red-600';
   return <span className={`text-xs font-medium ${color}`}>{score}/100</span>;
 }
 
 // Color a user word based on pronunciation score from Azure
 function PronunciationWord({ word, pronScore }) {
   const colorClass = pronScore == null ? 'text-white'
-    : pronScore >= 80 ? 'text-green-300'
-    : pronScore >= 60 ? 'text-yellow-300'
-    : 'text-red-300';
+    : pronScore >= 80 ? 'text-green-200'
+    : pronScore >= 60 ? 'text-amber-200'
+    : 'text-red-200';
 
   return (
     <span className={`${colorClass} inline`}>
@@ -64,10 +64,10 @@ export default function ChatBubble({ type, text, userWords, userPinyin, userEngl
             )}
           </p>
           {displayMode >= 1 && !userWords?.length && userPinyin && (wordScores?.length > 0) && (
-            <p className="text-emerald-200/80 text-xs mt-1">{userPinyin}</p>
+            <p className="text-green-100/80 text-xs mt-1">{userPinyin}</p>
           )}
           {userEnglish && (
-            <p className="text-emerald-200/70 text-xs mt-1 italic">{userEnglish}</p>
+            <p className="text-green-100/70 text-xs mt-1 italic">{userEnglish}</p>
           )}
           {score != null && (
             <div className="mt-1 text-right">
@@ -75,7 +75,7 @@ export default function ChatBubble({ type, text, userWords, userPinyin, userEngl
             </div>
           )}
         </div>
-        <div className="w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center shrink-0 text-xs text-white font-medium">
+        <div className="w-8 h-8 rounded-full bg-olive-700 flex items-center justify-center shrink-0 text-xs text-white font-medium">
           你
         </div>
       </div>
@@ -88,11 +88,11 @@ export default function ChatBubble({ type, text, userWords, userPinyin, userEngl
 
   return (
     <div className="flex justify-start items-end gap-2 animate-fade-in">
-      <div className={`w-8 h-8 rounded-full ${isTeacher ? 'bg-amber-700' : 'bg-slate-600'} flex items-center justify-center shrink-0 text-xs text-white font-medium`}>
+      <div className={`w-8 h-8 rounded-full ${isTeacher ? 'bg-amber-700' : 'bg-warm-300'} flex items-center justify-center shrink-0 text-xs ${isTeacher ? 'text-white' : 'text-warm-900'} font-medium`}>
         {isTeacher ? '王' : '林'}
       </div>
       <div className="chat-bubble chat-bubble-ai">
-        <p className="text-slate-50 text-[15px] leading-relaxed">
+        <p className="text-warm-900 text-[15px] leading-relaxed">
           {words && words.length > 0 ? (
             words.map((w, i) => (
               <ClickableWord
@@ -110,25 +110,25 @@ export default function ChatBubble({ type, text, userWords, userPinyin, userEngl
           )}
         </p>
         {displayMode >= 2 && aiResponse?.english && (
-          <p className="text-slate-400 text-xs mt-1.5 italic">{aiResponse.english}</p>
+          <p className="text-warm-600 text-xs mt-1.5 italic">{aiResponse.english}</p>
         )}
         {aiResponse?.teaching_notes && (
-          <div className="mt-2 pt-2 border-t border-slate-700">
-            <p className="text-xs text-amber-200/90 leading-relaxed whitespace-pre-line">
+          <div className="mt-2 pt-2 border-t border-warm-300">
+            <p className="text-xs text-amber-700 leading-relaxed whitespace-pre-line">
               {aiResponse.teaching_notes}
             </p>
           </div>
         )}
         <div className="flex items-center gap-3 mt-1.5">
           {onSpeak && (
-            <button onClick={onSpeak} className="text-slate-500 hover:text-teal-400 text-xs cursor-pointer" title="Play">
+            <button onClick={onSpeak} className="text-warm-500 hover:text-brand-600 text-xs cursor-pointer" title="Play">
               <svg className="w-3.5 h-3.5 inline" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
               </svg>
             </button>
           )}
           {onSpeakSlow && (
-            <button onClick={onSpeakSlow} className="text-slate-500 hover:text-teal-400 text-xs cursor-pointer" title="Slow replay">
+            <button onClick={onSpeakSlow} className="text-warm-500 hover:text-brand-600 text-xs cursor-pointer" title="Slow replay">
               <svg className="w-3.5 h-3.5 inline mr-0.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
               </svg>
@@ -136,7 +136,7 @@ export default function ChatBubble({ type, text, userWords, userPinyin, userEngl
             </button>
           )}
           {hasCorrections && onShowCorrections && (
-            <button onClick={onShowCorrections} className="text-slate-500 hover:text-teal-400 text-xs cursor-pointer">
+            <button onClick={onShowCorrections} className="text-warm-500 hover:text-brand-600 text-xs cursor-pointer">
               {aiResponse.corrections.length} correction{aiResponse.corrections.length !== 1 ? 's' : ''}
               {aiResponse.new_vocabulary?.length > 0 && ` · ${aiResponse.new_vocabulary.length} new`}
             </button>

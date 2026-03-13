@@ -340,6 +340,66 @@ export async function getRecentSessions(limit = 10) {
   return sessions.slice(0, limit);
 }
 
+// Pronunciation trainer
+
+// Returns true if the string is mostly Chinese characters (not teacher notes / English explanations)
+function isPrimarilyChinese(str) {
+  if (!str || str.length === 0) return false;
+  let chineseCount = 0;
+  let totalAlphanumeric = 0;
+  for (const ch of str) {
+    const code = ch.charCodeAt(0);
+    if (code >= 0x4e00 && code <= 0x9fff) { chineseCount++; totalAlphanumeric++; }
+    else if ((code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)) { totalAlphanumeric++; }
+  }
+  if (totalAlphanumeric === 0) return false;
+  return chineseCount / totalAlphanumeric > 0.5;
+}
+
+export async function getPronunciationSentences(limit = 15) {
+  const seen = new Set();
+  const results = [];
+
+  const addUnique = (chinese, pinyin, english) => {
+    if (!chinese || seen.has(chinese)) return;
+    seen.add(chinese);
+    results.push({ chinese, pinyin: pinyin || '', english: english || '' });
+  };
+
+  // Vocabulary context sentences (prioritize low-accuracy words)
+  const uv = getUserVocab()
+    .filter(u => u.context_sentence)
+    .sort((a, b) => (a.accuracy_avg || 0) - (b.accuracy_avg || 0));
+
+  uv.forEach(u => {
+    if (u.context_sentence) {
+      if (typeof u.context_sentence === 'object') {
+        addUnique(u.context_sentence.chinese, u.context_sentence.pinyin, u.context_sentence.english);
+      } else if (isPrimarilyChinese(u.context_sentence)) {
+        addUnique(u.context_sentence, '', '');
+      }
+    }
+  });
+
+  return results.slice(0, limit);
+}
+
+export async function savePronunciationAttempt(referenceText, referencePinyin, scores, wordScores) {
+  const attempts = getStore('mt_shadowing');
+  attempts.push({
+    id: uuid(),
+    reference_text: referenceText,
+    reference_pinyin: referencePinyin,
+    accuracy_score: scores.accuracy,
+    fluency_score: scores.fluency,
+    completeness_score: scores.completeness,
+    pronunciation_score: scores.overall,
+    word_scores: wordScores,
+    created_at: new Date().toISOString()
+  });
+  setStore('mt_shadowing', attempts);
+}
+
 export async function getPronunciationTrend(days = 30) {
   const since = new Date();
   since.setDate(since.getDate() - days);

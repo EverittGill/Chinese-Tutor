@@ -18,32 +18,32 @@ export default function TopicSelector({ onSelectTopic, onNavigate }) {
   const scenarioTopics = TOPICS.slice(3);
 
   return (
-    <div className="min-h-dvh bg-slate-900 p-6">
+    <div className="min-h-dvh bg-warm-50 p-6">
       <div className="max-w-md mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-50">中文练习</h1>
-          <p className="text-sm text-slate-400">Choose a conversation topic</p>
+          <h1 className="text-2xl font-bold text-warm-900">中文练习</h1>
+          <p className="text-sm text-warm-600">Choose a conversation topic</p>
         </div>
 
         {/* Open conversation - full width */}
         <button
           onClick={() => onSelectTopic(openTopic)}
-          className="w-full bg-slate-800 hover:bg-slate-700 rounded-2xl p-5 text-left transition-colors cursor-pointer"
+          className="w-full bg-warm-100 hover:bg-warm-200 rounded-2xl p-5 text-left transition-colors cursor-pointer shadow-soft"
         >
           <span className="text-2xl mr-3">{openTopic.emoji}</span>
-          <span className="text-lg text-slate-50">{openTopic.chinese}</span>
-          <span className="text-sm text-slate-400 ml-2">{openTopic.english}</span>
+          <span className="text-lg text-warm-900">{openTopic.chinese}</span>
+          <span className="text-sm text-warm-600 ml-2">{openTopic.english}</span>
         </button>
 
         {/* Review mode - full width */}
         <button
           onClick={() => onSelectTopic(reviewTopic)}
-          className="w-full bg-teal-900/40 hover:bg-teal-900/60 border border-teal-700/50 rounded-2xl p-5 text-left transition-colors cursor-pointer"
+          className="w-full bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 rounded-2xl p-5 text-left transition-colors cursor-pointer"
         >
           <span className="text-2xl mr-3">{reviewTopic.emoji}</span>
-          <span className="text-lg text-slate-50">{reviewTopic.chinese}</span>
-          <span className="text-sm text-teal-400 ml-2">{reviewTopic.english}</span>
+          <span className="text-lg text-warm-900">{reviewTopic.chinese}</span>
+          <span className="text-sm text-brand-600 ml-2">{reviewTopic.english}</span>
         </button>
 
         {/* Teacher mode - full width */}
@@ -52,8 +52,8 @@ export default function TopicSelector({ onSelectTopic, onNavigate }) {
           className="w-full bg-amber-900/40 hover:bg-amber-900/60 border border-amber-700/50 rounded-2xl p-5 text-left transition-colors cursor-pointer"
         >
           <span className="text-2xl mr-3">{teacherTopic.emoji}</span>
-          <span className="text-lg text-slate-50">{teacherTopic.chinese}</span>
-          <span className="text-sm text-amber-400 ml-2">{teacherTopic.english}</span>
+          <span className="text-lg text-warm-900">{teacherTopic.chinese}</span>
+          <span className="text-sm text-amber-600 ml-2">{teacherTopic.english}</span>
         </button>
 
         {/* Scenario topics - 2 column grid */}
@@ -62,38 +62,45 @@ export default function TopicSelector({ onSelectTopic, onNavigate }) {
             <button
               key={topic.id}
               onClick={() => onSelectTopic(topic)}
-              className="bg-slate-800 hover:bg-slate-700 rounded-xl p-4 text-left transition-colors cursor-pointer"
+              className="bg-warm-100 hover:bg-warm-200 rounded-xl p-4 text-left transition-colors cursor-pointer shadow-soft"
             >
               <div className="text-2xl mb-2">{topic.emoji}</div>
-              <div className="text-sm text-slate-50">{topic.chinese}</div>
-              <div className="text-xs text-slate-400">{topic.english}</div>
+              <div className="text-sm text-warm-900">{topic.chinese}</div>
+              <div className="text-xs text-warm-600">{topic.english}</div>
             </button>
           ))}
         </div>
 
         {/* Navigation buttons */}
         {onNavigate && (
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => onNavigate('pronunciation')}
+              className="bg-warm-100 hover:bg-warm-200 rounded-xl p-3 text-center transition-colors cursor-pointer shadow-soft"
+            >
+              <span className="text-lg mr-1">🎯</span>
+              <span className="text-sm text-warm-700">Pronunciation</span>
+            </button>
             <button
               onClick={() => onNavigate('flashcards')}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 rounded-xl p-3 text-center transition-colors cursor-pointer"
+              className="bg-warm-100 hover:bg-warm-200 rounded-xl p-3 text-center transition-colors cursor-pointer shadow-soft"
             >
               <span className="text-lg mr-1">🃏</span>
-              <span className="text-sm text-slate-300">Review</span>
+              <span className="text-sm text-warm-700">Review</span>
             </button>
             <button
               onClick={() => onNavigate('vocab')}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 rounded-xl p-3 text-center transition-colors cursor-pointer"
+              className="bg-warm-100 hover:bg-warm-200 rounded-xl p-3 text-center transition-colors cursor-pointer shadow-soft"
             >
               <span className="text-lg mr-1">📚</span>
-              <span className="text-sm text-slate-300">Vocab</span>
+              <span className="text-sm text-warm-700">Vocab</span>
             </button>
             <button
               onClick={() => onNavigate('dashboard')}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 rounded-xl p-3 text-center transition-colors cursor-pointer"
+              className="bg-warm-100 hover:bg-warm-200 rounded-xl p-3 text-center transition-colors cursor-pointer shadow-soft"
             >
               <span className="text-lg mr-1">📊</span>
-              <span className="text-sm text-slate-300">Progress</span>
+              <span className="text-sm text-warm-700">Progress</span>
             </button>
           </div>
         )}

@@ -348,6 +348,74 @@ export async function getRecentSessions(limit = 10) {
   return data;
 }
 
+// Pronunciation trainer
+
+function isPrimarilyChinese(str) {
+  if (!str || str.length === 0) return false;
+  let chineseCount = 0;
+  let totalAlphanumeric = 0;
+  for (const ch of str) {
+    const code = ch.charCodeAt(0);
+    if (code >= 0x4e00 && code <= 0x9fff) { chineseCount++; totalAlphanumeric++; }
+    else if ((code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)) { totalAlphanumeric++; }
+  }
+  if (totalAlphanumeric === 0) return false;
+  return chineseCount / totalAlphanumeric > 0.5;
+}
+
+export async function getPronunciationSentences(limit = 15) {
+  if (!useSupabase()) return local.getPronunciationSentences(limit);
+  const sb = getSupabaseClient();
+  const seen = new Set();
+  const results = [];
+
+  const addUnique = (chinese, pinyin, english) => {
+    if (!chinese || seen.has(chinese)) return;
+    seen.add(chinese);
+    results.push({ chinese, pinyin: pinyin || '', english: english || '' });
+  };
+
+  // 1. Vocabulary context sentences (prioritize low-accuracy words)
+  const { data: vocabData } = await sb
+    .from('user_vocabulary')
+    .select('context_sentence, accuracy_avg, vocabulary(word, pinyin, english)')
+    .not('context_sentence', 'is', null)
+    .order('accuracy_avg', { ascending: true })
+    .limit(limit);
+
+  if (vocabData) {
+    vocabData.forEach(uv => {
+      if (uv.context_sentence) {
+        // context_sentence may be stored as { chinese, pinyin, english } or just a string
+        if (typeof uv.context_sentence === 'object') {
+          addUnique(uv.context_sentence.chinese, uv.context_sentence.pinyin, uv.context_sentence.english);
+        } else if (isPrimarilyChinese(uv.context_sentence)) {
+          addUnique(uv.context_sentence, '', '');
+        }
+      }
+    });
+  }
+
+  return results.slice(0, limit);
+}
+
+export async function savePronunciationAttempt(referenceText, referencePinyin, scores, wordScores) {
+  if (!useSupabase()) return local.savePronunciationAttempt(referenceText, referencePinyin, scores, wordScores);
+  const sb = getSupabaseClient();
+  const { error } = await sb
+    .from('shadowing_attempts')
+    .insert({
+      reference_text: referenceText,
+      reference_pinyin: referencePinyin,
+      accuracy_score: scores.accuracy,
+      fluency_score: scores.fluency,
+      completeness_score: scores.completeness,
+      pronunciation_score: scores.overall,
+      word_scores: wordScores,
+    });
+  if (error) console.error('savePronunciationAttempt:', error);
+}
+
 export async function getPronunciationTrend(days = 30) {
   if (!useSupabase()) return local.getPronunciationTrend(days);
   const sb = getSupabaseClient();

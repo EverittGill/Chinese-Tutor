@@ -18,9 +18,9 @@ function ratingColor(rating) {
   switch (rating) {
     case Rating.Again: return 'bg-red-600 hover:bg-red-700';
     case Rating.Hard: return 'bg-orange-600 hover:bg-orange-700';
-    case Rating.Good: return 'bg-teal-600 hover:bg-teal-700';
+    case Rating.Good: return 'bg-brand-600 hover:bg-brand-700';
     case Rating.Easy: return 'bg-green-600 hover:bg-green-700';
-    default: return 'bg-slate-600';
+    default: return 'bg-warm-400';
   }
 }
 
@@ -108,8 +108,8 @@ export default function FlashcardScreen({ onBack }) {
 
   if (loading) {
     return (
-      <div className="min-h-dvh bg-slate-900 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-dvh bg-warm-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -117,18 +117,18 @@ export default function FlashcardScreen({ onBack }) {
   // All done
   if (!currentCard || currentIdx >= cards.length) {
     return (
-      <div className="min-h-dvh bg-slate-900 flex flex-col items-center justify-center p-6">
+      <div className="min-h-dvh bg-warm-50 flex flex-col items-center justify-center p-6">
         <div className="text-center space-y-4">
           <div className="text-4xl">🎉</div>
-          <h2 className="text-xl font-bold text-slate-50">
+          <h2 className="text-xl font-bold text-warm-900">
             {reviewed === 0 ? 'No cards due!' : 'All done!'}
           </h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-warm-600 text-sm">
             {reviewed > 0 ? `Reviewed ${reviewed} card${reviewed !== 1 ? 's' : ''}` : 'Come back later for more reviews'}
           </p>
           <button
             onClick={onBack}
-            className="bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg px-6 py-2.5 transition-colors cursor-pointer"
+            className="bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg px-6 py-2.5 transition-colors cursor-pointer"
           >
             Back
           </button>
@@ -151,13 +151,13 @@ export default function FlashcardScreen({ onBack }) {
   const remaining = cards.length - currentIdx;
 
   return (
-    <div className="min-h-dvh bg-slate-900 flex flex-col">
+    <div className="min-h-dvh bg-warm-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
-        <button onClick={onBack} className="text-slate-400 hover:text-slate-200 text-sm cursor-pointer">
+        <button onClick={onBack} className="text-warm-600 hover:text-warm-900 text-sm cursor-pointer">
           ← Back
         </button>
-        <span className="text-slate-500 text-xs">
+        <span className="text-warm-500 text-xs">
           {reviewed} reviewed · {remaining} remaining
         </span>
       </div>
@@ -165,26 +165,26 @@ export default function FlashcardScreen({ onBack }) {
       {/* Card */}
       <div className="flex-1 flex items-center justify-center px-6">
         <div
-          className="w-full max-w-sm bg-slate-800 rounded-2xl p-8 text-center cursor-pointer select-none"
+          className="w-full max-w-sm bg-warm-100 rounded-2xl p-8 text-center cursor-pointer select-none shadow-soft"
           onClick={!revealed ? handleReveal : undefined}
         >
           {/* Front: Chinese character */}
-          <div className="text-4xl font-bold text-slate-50 mb-4">
+          <div className="text-4xl font-bold text-warm-900 mb-4">
             {currentCard.word}
           </div>
 
           {revealed ? (
             <div className="space-y-3 animate-fade-in">
-              <div className="text-teal-400 text-xl">{currentCard.pinyin}</div>
-              <div className="text-slate-300 text-lg">{currentCard.english}</div>
+              <div className="text-brand-600 text-xl">{currentCard.pinyin}</div>
+              <div className="text-warm-700 text-lg">{currentCard.english}</div>
               {currentCard.context_sentence && (
-                <div className="text-slate-500 text-sm italic mt-2 border-t border-slate-700 pt-3">
+                <div className="text-warm-500 text-sm italic mt-2 border-t border-warm-300 pt-3">
                   {currentCard.context_sentence}
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm">Tap to reveal</p>
+            <p className="text-warm-500 text-sm">Tap to reveal</p>
           )}
         </div>
       </div>

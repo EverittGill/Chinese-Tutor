@@ -138,7 +138,7 @@ function useAzureRecognition() {
   const [pronunciationData, setPronunciationData] = useState(null);
   const recognizerRef = useRef(null);
   const sdkRef = useRef(null);
-  const accumulatedRef = useRef({ text: '', words: [], accuracies: [], fluencies: [] });
+  const accumulatedRef = useRef({ text: '', words: [], accuracies: [], fluencies: [], completeness: null });
   const lastInterimRef = useRef('');
   const stoppingRef = useRef(false);
   const stopTimeoutRef = useRef(null);
@@ -152,12 +152,70 @@ function useAzureRecognition() {
 
   const streamRef = useRef(null);
 
-  const startListening = useCallback(async () => {
+  // Extract pronunciation words from a recognition result's JSON
+  const extractPronWords = useCallback((sdk, result, acc) => {
+    try {
+      const pronResult = sdk.PronunciationAssessmentResult.fromResult(result);
+      acc.accuracies.push(pronResult.accuracyScore);
+      acc.fluencies.push(pronResult.fluencyScore);
+
+      const detailJson = result.properties.getProperty(
+        sdk.PropertyId.SpeechServiceResponse_JsonResult
+      );
+      if (detailJson) {
+        const detail = JSON.parse(detailJson);
+        const nBest = detail?.NBest?.[0];
+        const words = nBest?.Words || [];
+        words.forEach(w => {
+          acc.words.push({
+            word: w.Word,
+            accuracyScore: Math.round(w.PronunciationAssessment?.AccuracyScore || 0),
+            errorType: w.PronunciationAssessment?.ErrorType || 'None',
+            syllables: (w.Syllables || []).map(s => ({
+              syllable: s.Syllable,
+              accuracyScore: Math.round(s.PronunciationAssessment?.AccuracyScore || 0)
+            })),
+            phonemes: (w.Phonemes || []).map(p => ({
+              phoneme: p.Phoneme,
+              accuracyScore: Math.round(p.PronunciationAssessment?.AccuracyScore || 0)
+            }))
+          });
+        });
+        if (nBest?.PronunciationAssessment?.CompletenessScore != null) {
+          acc.completeness = Math.round(nBest.PronunciationAssessment.CompletenessScore);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not extract pronunciation data:', err);
+    }
+  }, []);
+
+  // Harvest accumulated speech data and finalize the turn
+  const harvestAccumulated = useCallback((acc) => {
+    setRecognizedText(acc.text);
+    setTurnId(prev => prev + 1);
+
+    const avgAcc = acc.accuracies.length > 0
+      ? Math.round(acc.accuracies.reduce((a, b) => a + b, 0) / acc.accuracies.length) : 0;
+    const avgFlu = acc.fluencies.length > 0
+      ? Math.round(acc.fluencies.reduce((a, b) => a + b, 0) / acc.fluencies.length) : 0;
+
+    const completeness = acc.completeness != null ? acc.completeness : 0;
+    setPronunciationData({
+      accuracyScore: avgAcc,
+      fluencyScore: avgFlu,
+      completenessScore: completeness,
+      pronunciationScore: Math.round((avgAcc + avgFlu) / 2),
+      words: acc.words
+    });
+  }, []);
+
+  const startListening = useCallback(async (referenceText = '') => {
     setError(null);
     setIsListening(true);
     setPronunciationData(null);
     setInterimText('');
-    accumulatedRef.current = { text: '', words: [], accuracies: [], fluencies: [] };
+    accumulatedRef.current = { text: '', words: [], accuracies: [], fluencies: [], completeness: null };
     lastInterimRef.current = '';
     stoppingRef.current = false;
     if (stopTimeoutRef.current) {
@@ -178,18 +236,26 @@ function useAzureRecognition() {
 
       const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(tokenData.token, tokenData.region);
       speechConfig.speechRecognitionLanguage = 'zh-CN';
-      // Split speech into segments after 3s silence (Azure max for pronunciation mode)
-      speechConfig.setProperty("Speech_SegmentationSilenceTimeoutMs", "3000");
-      // Keep session alive for up to 2 min of silence — user controls end via button release
-      speechConfig.setProperty("SpeechServiceConnection_EndSilenceTimeoutMs", "120000");
+
+      if (referenceText) {
+        // Pronunciation assessment mode: long segmentation timeout so Azure doesn't
+        // split the utterance on brief pauses between words
+        speechConfig.setProperty("Speech_SegmentationSilenceTimeoutMs", "5000");
+        speechConfig.setProperty("SpeechServiceConnection_EndSilenceTimeoutMs", "10000");
+      } else {
+        // Conversation mode: segment on pauses, keep session alive
+        speechConfig.setProperty("Speech_SegmentationSilenceTimeoutMs", "3000");
+        speechConfig.setProperty("SpeechServiceConnection_EndSilenceTimeoutMs", "120000");
+      }
+
       const audioConfig = sdk.AudioConfig.fromStreamInput(micStream);
       const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
 
       const pronunciationConfig = new sdk.PronunciationAssessmentConfig(
-        "",
+        referenceText,
         sdk.PronunciationAssessmentGradingSystem.HundredMark,
         sdk.PronunciationAssessmentGranularity.Phoneme,
-        true
+        !!referenceText // enableMiscue only with reference text
       );
       pronunciationConfig.applyTo(recognizer);
 
@@ -199,8 +265,8 @@ function useAzureRecognition() {
       }
       recognizerRef.current = recognizer;
 
+      // Always use continuous recognition — works for both conversation and pronunciation
       recognizer.recognizing = (s, e) => {
-        // Show interim text (accumulated finals + current partial)
         if (e.result.text) {
           const fullInterim = accumulatedRef.current.text + e.result.text;
           setInterimText(fullInterim);
@@ -213,29 +279,7 @@ function useAzureRecognition() {
         if (e.result.reason === sdk.ResultReason.RecognizedSpeech) {
           const acc = accumulatedRef.current;
           acc.text += e.result.text;
-
-          try {
-            const pronResult = sdk.PronunciationAssessmentResult.fromResult(e.result);
-            acc.accuracies.push(pronResult.accuracyScore);
-            acc.fluencies.push(pronResult.fluencyScore);
-
-            const detailJson = e.result.properties.getProperty(
-              sdk.PropertyId.SpeechServiceResponse_JsonResult
-            );
-            if (detailJson) {
-              const detail = JSON.parse(detailJson);
-              const words = detail?.NBest?.[0]?.Words || [];
-              words.forEach(w => {
-                acc.words.push({
-                  word: w.Word,
-                  accuracyScore: Math.round(w.PronunciationAssessment?.AccuracyScore || 0),
-                  errorType: w.PronunciationAssessment?.ErrorType || 'None'
-                });
-              });
-            }
-          } catch (err) {
-            console.warn('Could not extract pronunciation data:', err);
-          }
+          extractPronWords(sdk, e.result, acc);
         }
       };
 
@@ -257,26 +301,7 @@ function useAzureRecognition() {
       setIsListening(false);
       setError(`Speech setup error: ${err.message}`);
     }
-  }, [getSdk]);
-
-  // Harvest accumulated speech data and finalize the turn
-  const harvestAccumulated = useCallback((acc) => {
-    setRecognizedText(acc.text);
-    setTurnId(prev => prev + 1);
-
-    const avgAcc = acc.accuracies.length > 0
-      ? Math.round(acc.accuracies.reduce((a, b) => a + b, 0) / acc.accuracies.length) : 0;
-    const avgFlu = acc.fluencies.length > 0
-      ? Math.round(acc.fluencies.reduce((a, b) => a + b, 0) / acc.fluencies.length) : 0;
-
-    setPronunciationData({
-      accuracyScore: avgAcc,
-      fluencyScore: avgFlu,
-      completenessScore: 0,
-      pronunciationScore: Math.round((avgAcc + avgFlu) / 2),
-      words: acc.words
-    });
-  }, []);
+  }, [getSdk, extractPronWords, harvestAccumulated]);
 
   const stopListening = useCallback(async () => {
     // Prevent double-stop on mobile touch events

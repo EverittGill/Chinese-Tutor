@@ -46,13 +46,13 @@ export default function VocabList({ refreshTrigger }) {
   return (
     <div className="space-y-4">
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-700/50 rounded-lg p-1">
+      <div className="flex gap-1 bg-warm-200/50 rounded-lg p-1">
         {TABS.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors cursor-pointer
-              ${activeTab === tab.key ? 'bg-slate-600 text-slate-50' : 'text-slate-400 hover:text-slate-300'}`}
+              ${activeTab === tab.key ? 'bg-warm-100 text-warm-900 shadow-soft' : 'text-warm-600 hover:text-warm-700'}`}
           >
             {tab.label} ({counts[tab.key]})
           </button>
@@ -62,33 +62,33 @@ export default function VocabList({ refreshTrigger }) {
       {/* Word list */}
       {loading ? (
         <div className="flex justify-center py-8">
-          <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : words.length === 0 ? (
-        <p className="text-slate-500 text-center py-8 text-sm">No words in this category yet</p>
+        <p className="text-warm-500 text-center py-8 text-sm">No words in this category yet</p>
       ) : (
         <div className="space-y-2 max-h-[50vh] overflow-y-auto">
           {words.map(word => (
             <button
               key={word.id}
               onClick={() => handleToggleStatus(word)}
-              className="w-full bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 text-left transition-colors cursor-pointer"
+              className="w-full bg-warm-100 hover:bg-warm-200 rounded-lg p-3 text-left transition-colors cursor-pointer"
             >
               <div className="flex items-baseline justify-between">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-lg text-slate-50">{word.word}</span>
-                  <span className="text-sm text-teal-400">{word.pinyin}</span>
+                  <span className="text-lg text-warm-900">{word.word}</span>
+                  <span className="text-sm text-brand-600">{word.pinyin}</span>
                 </div>
                 <div className="text-right">
                   {word.times_seen > 0 && (
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-warm-500">
                       seen {word.times_seen}x
                       {word.accuracy_avg > 0 && ` · ${word.accuracy_avg}%`}
                     </span>
                   )}
                 </div>
               </div>
-              <p className="text-sm text-slate-400">{word.english}</p>
+              <p className="text-sm text-warm-600">{word.english}</p>
             </button>
           ))}
         </div>

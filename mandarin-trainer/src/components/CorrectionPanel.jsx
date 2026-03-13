@@ -1,39 +1,39 @@
 import { useEffect, useRef } from 'react';
 
 const TYPE_LABELS = {
-  grammar: { label: '语法 Grammar', color: 'text-yellow-500' },
-  vocabulary: { label: '词汇 Vocabulary', color: 'text-blue-400' },
-  pronunciation: { label: '发音 Pronunciation', color: 'text-red-400' },
+  grammar: { label: '语法 Grammar', color: 'text-amber-600' },
+  vocabulary: { label: '词汇 Vocabulary', color: 'text-blue-600' },
+  pronunciation: { label: '发音 Pronunciation', color: 'text-red-600' },
 };
 
 function CorrectionItem({ correction }) {
   const typeInfo = TYPE_LABELS[correction.type] || TYPE_LABELS.grammar;
   return (
-    <div className="bg-slate-700/50 rounded-lg p-3 space-y-1">
+    <div className="bg-warm-200/50 rounded-lg p-3 space-y-1">
       <span className={`text-xs font-medium ${typeInfo.color}`}>{typeInfo.label}</span>
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-red-300 line-through">{correction.original}</span>
-        <span className="text-slate-500">→</span>
-        <span className="text-green-400">{correction.corrected}</span>
+        <span className="text-red-600 line-through">{correction.original}</span>
+        <span className="text-warm-500">→</span>
+        <span className="text-green-600">{correction.corrected}</span>
       </div>
       {correction.pinyin && (
-        <p className="text-xs text-teal-400">{correction.pinyin}</p>
+        <p className="text-xs text-brand-600">{correction.pinyin}</p>
       )}
-      <p className="text-xs text-slate-400">{correction.explanation}</p>
+      <p className="text-xs text-warm-600">{correction.explanation}</p>
     </div>
   );
 }
 
 function VocabItem({ vocab }) {
   return (
-    <div className="bg-slate-700/50 rounded-lg p-3 space-y-1">
+    <div className="bg-warm-200/50 rounded-lg p-3 space-y-1">
       <div className="flex items-baseline gap-2">
-        <span className="text-lg text-slate-50">{vocab.word}</span>
-        <span className="text-sm text-teal-400">{vocab.pinyin}</span>
+        <span className="text-lg text-warm-900">{vocab.word}</span>
+        <span className="text-sm text-brand-600">{vocab.pinyin}</span>
       </div>
-      <p className="text-sm text-slate-300">{vocab.english}</p>
+      <p className="text-sm text-warm-700">{vocab.english}</p>
       {vocab.context && (
-        <p className="text-xs text-slate-400">{vocab.context}</p>
+        <p className="text-xs text-warm-600">{vocab.context}</p>
       )}
     </div>
   );
@@ -63,16 +63,16 @@ export default function CorrectionPanel({ corrections = [], newVocabulary = [], 
   });
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-end">
       <div
         ref={panelRef}
-        className="bg-slate-800 rounded-t-2xl w-full max-h-[70vh] overflow-y-auto p-6 space-y-4 animate-slide-up"
+        className="bg-warm-100 rounded-t-2xl w-full max-h-[70vh] overflow-y-auto p-6 space-y-4 animate-slide-up"
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-50">Corrections & Vocabulary</h3>
+          <h3 className="text-lg font-semibold text-warm-900">Corrections & Vocabulary</h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 text-xl cursor-pointer"
+            className="text-warm-600 hover:text-warm-900 text-xl cursor-pointer"
           >
             ✕
           </button>
@@ -86,7 +86,7 @@ export default function CorrectionPanel({ corrections = [], newVocabulary = [], 
 
         {newVocabulary.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium text-teal-400">New Vocabulary</h4>
+            <h4 className="text-sm font-medium text-brand-600">New Vocabulary</h4>
             {newVocabulary.map((v, i) => <VocabItem key={i} vocab={v} />)}
           </div>
         )}

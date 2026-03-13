@@ -297,13 +297,13 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
   }
 
   return (
-    <div className="h-dvh bg-slate-900 flex flex-col">
+    <div className="h-dvh bg-warm-50 flex flex-col">
       {/* Error toast */}
       {errorToast && (
         <div className="absolute top-4 left-4 right-4 z-50 animate-toast">
-          <div className="bg-red-900/90 text-red-200 rounded-lg px-4 py-3 text-sm flex items-center justify-between">
+          <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-3 text-sm flex items-center justify-between shadow-md">
             <span>{errorToast}</span>
-            <button onClick={() => setErrorToast(null)} className="text-red-300 hover:text-red-100 ml-2 cursor-pointer">✕</button>
+            <button onClick={() => setErrorToast(null)} className="text-red-600 hover:text-red-800 ml-2 cursor-pointer">✕</button>
           </div>
         </div>
       )}
@@ -311,22 +311,22 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
         {onBack && (
-          <button onClick={handleBack} className="text-slate-400 hover:text-slate-200 text-sm cursor-pointer">
+          <button onClick={handleBack} className="text-warm-600 hover:text-warm-900 text-sm cursor-pointer">
             ← Back
           </button>
         )}
         <div className="flex-1 text-center">
-          <button onClick={cycleDisplayMode} className="text-slate-500 text-xs cursor-pointer hover:text-slate-300">
+          <button onClick={cycleDisplayMode} className="text-warm-500 text-xs cursor-pointer hover:text-warm-700">
             {DISPLAY_MODES[displayMode]}
           </button>
         </div>
         {hasStarted && state === 'IDLE' && (
-          <button onClick={handleFinish} className="text-teal-400 hover:text-teal-300 text-sm font-medium cursor-pointer">
+          <button onClick={handleFinish} className="text-brand-600 hover:text-brand-700 text-sm font-medium cursor-pointer">
             Finish
           </button>
         )}
         {topic && !hasStarted && (
-          <span className="text-slate-500 text-sm">{topic.chinese || topic.english}</span>
+          <span className="text-warm-500 text-sm">{topic.chinese || topic.english}</span>
         )}
       </div>
 
@@ -334,7 +334,7 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
       <div className="flex-1 overflow-y-auto px-4 pt-10 pb-28 space-y-3">
         {chatHistory.length === 0 && !isLoading && (
           <div className="flex-1 flex items-center justify-center h-full">
-            <p className="text-slate-500 text-center">Tap the mic to start speaking</p>
+            <p className="text-warm-500 text-center">Tap the mic to start speaking</p>
           </div>
         )}
 
@@ -369,14 +369,14 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
             ) : (
               // Loading indicator for pending AI response
               <div className="flex justify-start items-end gap-2">
-                <div className={`w-8 h-8 rounded-full ${isTeacher ? 'bg-amber-700' : 'bg-slate-600'} flex items-center justify-center shrink-0 text-xs text-white font-medium`}>
+                <div className={`w-8 h-8 rounded-full ${isTeacher ? 'bg-amber-700' : 'bg-warm-300'} flex items-center justify-center shrink-0 text-xs text-warm-900 font-medium`}>
                   {isTeacher ? '王' : '林'}
                 </div>
                 <div className="chat-bubble chat-bubble-ai">
                   <div className="flex gap-1 py-1">
-                    <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="w-2 h-2 bg-warm-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-warm-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-warm-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -396,14 +396,14 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
         {/* Initial loading spinner for topic greeting */}
         {isLoading && chatHistory.length === 0 && (
           <div className="flex justify-start items-end gap-2">
-            <div className={`w-8 h-8 rounded-full ${isTeacher ? 'bg-amber-700' : 'bg-slate-600'} flex items-center justify-center shrink-0 text-xs text-white font-medium`}>
+            <div className={`w-8 h-8 rounded-full ${isTeacher ? 'bg-amber-700' : 'bg-warm-300'} flex items-center justify-center shrink-0 text-xs text-warm-900 font-medium`}>
               {isTeacher ? '王' : '林'}
             </div>
             <div className="chat-bubble chat-bubble-ai">
               <div className="flex gap-1 py-1">
-                <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-2 h-2 bg-warm-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-warm-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-warm-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </div>
@@ -422,8 +422,8 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
       )}
 
       {/* Bottom bar: state indicator + mic */}
-      <div className="shrink-0 flex flex-col items-center pb-8 pt-3 border-t border-slate-800">
-        <div className="text-xs text-slate-500 mb-2 h-4">
+      <div className="shrink-0 flex flex-col items-center pb-8 pt-3 border-t border-warm-300">
+        <div className="text-xs text-warm-500 mb-2 h-4">
           {state === 'LISTENING' && (interimText ? 'Listening...' : 'Hold to speak...')}
           {state === 'PROCESSING' && 'Thinking...'}
           {state === 'SPEAKING' && 'Speaking...'}
@@ -439,22 +439,22 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
             ${state === 'LISTENING'
               ? 'bg-red-500 scale-110 mic-pulse'
               : state === 'PROCESSING'
-              ? 'bg-slate-700'
+              ? 'bg-warm-200'
               : state === 'SPEAKING'
-              ? 'bg-slate-700'
-              : 'bg-slate-700 hover:bg-slate-600 active:scale-95'
+              ? 'bg-warm-200'
+              : 'bg-warm-200 hover:bg-warm-300 active:scale-95'
             }
             ${(state === 'PROCESSING' || state === 'SPEAKING') ? 'cursor-not-allowed' : ''}
           `}
         >
           {state === 'PROCESSING' ? (
-            <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
           ) : state === 'SPEAKING' ? (
-            <svg className="w-6 h-6 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-warm-600" fill="currentColor" viewBox="0 0 24 24">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
             </svg>
           ) : (
-            <svg className="w-6 h-6 text-slate-50" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-warm-900" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z" />
               <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
             </svg>

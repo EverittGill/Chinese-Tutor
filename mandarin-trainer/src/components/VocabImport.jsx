@@ -26,10 +26,10 @@ const convertTool = {
 };
 
 const typeBadgeColors = {
-  word: 'bg-green-500/20 text-green-400',
-  phrase: 'bg-blue-500/20 text-blue-400',
-  sentence: 'bg-yellow-500/20 text-yellow-400',
-  grammar: 'bg-slate-500/20 text-slate-400',
+  word: 'bg-green-50 text-green-700',
+  phrase: 'bg-blue-50 text-blue-700',
+  sentence: 'bg-amber-50 text-amber-700',
+  grammar: 'bg-warm-200 text-warm-600',
 };
 
 function hasChinese(str) {
@@ -196,18 +196,18 @@ Rules:
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-slate-300">
+          <h3 className="text-sm font-medium text-warm-700">
             Review Converted Entries
           </h3>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-warm-600">
             {selectedCount} of {convertedEntries.length} selected
           </span>
         </div>
 
         <div className="flex gap-2 text-xs">
-          <button onClick={() => selectAll(true)} className="text-teal-400 hover:text-teal-300 cursor-pointer">Select all</button>
-          <span className="text-slate-600">|</span>
-          <button onClick={() => selectAll(false)} className="text-teal-400 hover:text-teal-300 cursor-pointer">Deselect all</button>
+          <button onClick={() => selectAll(true)} className="text-brand-600 hover:text-brand-700 cursor-pointer">Select all</button>
+          <span className="text-warm-400">|</span>
+          <button onClick={() => selectAll(false)} className="text-brand-600 hover:text-brand-700 cursor-pointer">Deselect all</button>
         </div>
 
         <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
@@ -215,24 +215,24 @@ Rules:
             <label
               key={i}
               className={`flex items-start gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                entry.selected ? 'bg-slate-700/60' : 'bg-slate-800/40 opacity-60'
+                entry.selected ? 'bg-warm-100' : 'bg-warm-50 opacity-60'
               }`}
             >
               <input
                 type="checkbox"
                 checked={entry.selected}
                 onChange={() => toggleEntry(i)}
-                className="accent-teal-500 mt-1 shrink-0"
+                className="accent-brand-600 mt-1 shrink-0"
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-50 text-sm font-medium">{entry.chinese}</span>
-                  <span className="text-slate-400 text-xs">{entry.pinyin}</span>
+                  <span className="text-warm-900 text-sm font-medium">{entry.chinese}</span>
+                  <span className="text-warm-600 text-xs">{entry.pinyin}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${typeBadgeColors[entry.type] || typeBadgeColors.word}`}>
                     {entry.type}
                   </span>
                 </div>
-                <div className="text-slate-400 text-xs truncate">{entry.english}</div>
+                <div className="text-warm-600 text-xs truncate">{entry.english}</div>
               </div>
             </label>
           ))}
@@ -241,12 +241,12 @@ Rules:
         <div className="flex items-center justify-between mb-2">
           <div className="flex gap-3">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="vocab-status-preview" checked={status === 'known'} onChange={() => setStatus('known')} className="accent-teal-500" />
-              <span className="text-sm text-slate-300">I know these</span>
+              <input type="radio" name="vocab-status-preview" checked={status === 'known'} onChange={() => setStatus('known')} className="accent-brand-600" />
+              <span className="text-sm text-warm-700">I know these</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="vocab-status-preview" checked={status === 'new'} onChange={() => setStatus('new')} className="accent-teal-500" />
-              <span className="text-sm text-slate-300">I need to learn these</span>
+              <input type="radio" name="vocab-status-preview" checked={status === 'new'} onChange={() => setStatus('new')} className="accent-brand-600" />
+              <span className="text-sm text-warm-700">I need to learn these</span>
             </label>
           </div>
         </div>
@@ -254,21 +254,21 @@ Rules:
         <div className="flex gap-2">
           <button
             onClick={() => { setConvertedEntries(null); setConvertError(null); }}
-            className="flex-1 bg-slate-600 hover:bg-slate-500 text-white font-semibold rounded-lg py-2.5 transition-colors cursor-pointer"
+            className="flex-1 bg-warm-300 hover:bg-warm-400 text-warm-900 font-semibold rounded-lg py-2.5 transition-colors cursor-pointer"
           >
             Back
           </button>
           <button
             onClick={handleImportConverted}
             disabled={selectedCount === 0 || importing}
-            className="flex-1 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-semibold rounded-lg py-2.5 transition-colors cursor-pointer"
+            className="flex-1 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold rounded-lg py-2.5 transition-colors cursor-pointer"
           >
             {importing ? 'Importing...' : `Import Selected (${selectedCount})`}
           </button>
         </div>
 
         {result && (
-          <p className="text-green-400 text-sm text-center">{result}</p>
+          <p className="text-green-600 text-sm text-center">{result}</p>
         )}
       </div>
     );
@@ -279,12 +279,12 @@ Rules:
     <div className="space-y-4">
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm text-slate-400">
+          <label className="text-sm text-warm-600">
             {needsConversion
               ? 'Paste words (pinyin, english — AI will add Chinese)'
               : 'Paste words (one per line: word, pinyin, english)'}
           </label>
-          <label className="text-xs text-teal-400 hover:text-teal-300 cursor-pointer">
+          <label className="text-xs text-brand-600 hover:text-brand-700 cursor-pointer">
             Upload CSV
             <input
               ref={fileRef}
@@ -305,7 +305,7 @@ Rules:
           }}
           placeholder={"你好, nǐ hǎo, hello\n谢谢, xiè xiè, thank you\n\nor just:\nnǐ hǎo, hello\nxiè xiè, thank you"}
           rows={5}
-          className="w-full bg-slate-700 text-slate-50 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500 placeholder-slate-500 text-sm resize-none"
+          className="w-full bg-warm-100 text-warm-900 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500 placeholder-warm-500 text-sm resize-none border border-warm-300"
         />
       </div>
 
@@ -316,9 +316,9 @@ Rules:
             name="vocab-status"
             checked={status === 'known'}
             onChange={() => setStatus('known')}
-            className="accent-teal-500"
+            className="accent-brand-600"
           />
-          <span className="text-sm text-slate-300">I know these</span>
+          <span className="text-sm text-warm-700">I know these</span>
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
           <input
@@ -326,9 +326,9 @@ Rules:
             name="vocab-status"
             checked={status === 'new'}
             onChange={() => setStatus('new')}
-            className="accent-teal-500"
+            className="accent-brand-600"
           />
-          <span className="text-sm text-slate-300">I need to learn these</span>
+          <span className="text-sm text-warm-700">I need to learn these</span>
         </label>
       </div>
 
@@ -352,17 +352,17 @@ Rules:
         <button
           onClick={handleImport}
           disabled={!text.trim() || importing}
-          className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-semibold rounded-lg py-2.5 transition-colors cursor-pointer"
+          className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold rounded-lg py-2.5 transition-colors cursor-pointer"
         >
           {importing ? 'Importing...' : 'Import'}
         </button>
       )}
 
       {convertError && (
-        <p className="text-red-400 text-sm text-center">{convertError}</p>
+        <p className="text-red-600 text-sm text-center">{convertError}</p>
       )}
       {result && (
-        <p className="text-green-400 text-sm text-center">{result}</p>
+        <p className="text-green-600 text-sm text-center">{result}</p>
       )}
     </div>
   );

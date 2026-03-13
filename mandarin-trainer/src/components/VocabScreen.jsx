@@ -6,13 +6,13 @@ export default function VocabScreen({ onBack }) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   return (
-    <div className="min-h-dvh bg-slate-900 p-6">
+    <div className="min-h-dvh bg-warm-50 p-6">
       <div className="max-w-md mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-slate-50">📚 Vocabulary</h1>
+          <h1 className="text-xl font-bold text-warm-900">📚 Vocabulary</h1>
           <button
             onClick={onBack}
-            className="text-slate-400 hover:text-slate-200 text-sm cursor-pointer"
+            className="text-warm-600 hover:text-warm-900 text-sm cursor-pointer"
           >
             ← Back
           </button>
