@@ -194,6 +194,79 @@ CRITICAL: You MUST ALWAYS include "words", "user_words", and "teaching_notes". E
 If you cannot understand the user at all, respond asking them to repeat: "对不起，我没听清楚，你能再说一遍吗？" and use teaching_notes to encourage them.`;
 }
 
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return 'unknown time ago';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  if (hours < 1) return 'just now';
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+}
+
+export function formatLearnerBriefing(recentSessions) {
+  if (!recentSessions || recentSessions.length === 0) return null;
+
+  // Filter to completed sessions (have ended_at and at least 1 exchange)
+  const completed = recentSessions.filter(s => s.ended_at && s.exchange_count > 0);
+  if (completed.length === 0) return null;
+
+  const sessions = completed.slice(0, 3);
+  let briefing = `LEARNER BRIEFING — RETURNING STUDENT:\nThis learner has completed ${completed.length} previous session${completed.length === 1 ? '' : 's'}.\n`;
+
+  sessions.forEach((session, i) => {
+    const label = i === 0 ? 'Last session' : i === 1 ? 'Previous session' : 'Earlier session';
+    const timeAgo = formatRelativeTime(session.ended_at);
+    const topic = session.topic || 'Open Conversation';
+
+    briefing += `\n${label} (${timeAgo}, topic: "${topic}"):\n`;
+
+    const summary = session.summary_json;
+    if (summary) {
+      if (summary.overall_assessment) {
+        briefing += `- Assessment: ${summary.overall_assessment}\n`;
+      }
+      if (summary.did_well?.length > 0) {
+        briefing += `- Strengths: ${summary.did_well.join(', ')}\n`;
+      }
+      if (summary.needs_work?.length > 0) {
+        briefing += `- Weaknesses: ${summary.needs_work.join(', ')}\n`;
+      }
+      if (summary.estimated_hsk_level) {
+        briefing += `- Estimated level: ${summary.estimated_hsk_level}\n`;
+      }
+      if (summary.suggested_topics?.length > 0) {
+        briefing += `- Suggested topics: ${summary.suggested_topics.join(', ')}\n`;
+      }
+    }
+
+    // Always include accuracy/fluency if available (works even without summary_json)
+    if (session.avg_accuracy != null || session.avg_fluency != null) {
+      const parts = [];
+      if (session.avg_accuracy != null) parts.push(`${session.avg_accuracy}% accuracy`);
+      if (session.avg_fluency != null) parts.push(`${session.avg_fluency}% fluency`);
+      briefing += `- Pronunciation: ${parts.join(', ')}\n`;
+    }
+  });
+
+  briefing += `
+RETURNING STUDENT INSTRUCTIONS:
+- Do NOT introduce yourself or ask the student's name — you already know them.
+- Skip basic pleasantries. Reference something from their recent sessions.
+- Dive directly into conversation at their level.
+- Naturally create opportunities to practice their weak areas.`;
+
+  const lastSummary = sessions[0]?.summary_json;
+  if (lastSummary?.suggested_topics?.length > 0) {
+    briefing += `\n- Suggested topics from last session: ${lastSummary.suggested_topics.join(', ')}`;
+  }
+
+  return briefing;
+}
+
 export function getReviewSystemPrompt(vocabularyContext = null) {
   const vocabInstruction = vocabularyContext
     ? `\nVOCABULARY CONTEXT:\n${vocabularyContext}`

@@ -5,8 +5,8 @@ import useConversation from '../hooks/useConversation';
 import ChatBubble from './ChatBubble';
 import CorrectionPanel from './CorrectionPanel';
 import SessionSummary from './SessionSummary';
-import { createSession, saveExchange, endSession, upsertWord, updateWordStats, recordMistakePattern, getVocabulary, getMistakePatterns } from '../utils/db';
-import { formatVocabularyContext, formatLevelContext } from '../utils/claudePrompt';
+import { createSession, saveExchange, endSession, upsertWord, updateWordStats, recordMistakePattern, getVocabulary, getMistakePatterns, getRecentSessions } from '../utils/db';
+import { formatVocabularyContext, formatLevelContext, formatLearnerBriefing } from '../utils/claudePrompt';
 
 const DISPLAY_MODES = ['chinese', 'chinese+pinyin', 'chinese+pinyin+english'];
 
@@ -15,9 +15,12 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
   const isTeacher = topic?.prompt === '__teacher__';
   const [vocabContext, setVocabContext] = useState(null);
   const [levelContext, setLevelContext] = useState(null);
+  const [learnerBriefing, setLearnerBriefing] = useState(null);
   const [vocabLoaded, setVocabLoaded] = useState(false);
 
   const mode = isTeacher ? 'teacher' : isReview ? 'review' : 'normal';
+  const [sessionFocus, setSessionFocus] = useState('');
+  const [showFocusInput, setShowFocusInput] = useState(false);
 
   const { recognizedText, turnId, interimText, isListening, startListening, stopListening, error: sttError, pronunciationData } = useAzureSpeech();
   const { speak, isSpeaking, error: ttsError } = useAzureTTS();
@@ -25,7 +28,9 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
     (isReview || isTeacher) ? null : (topic?.prompt || null),
     vocabContext,
     mode,
-    levelContext
+    levelContext,
+    sessionFocus,
+    learnerBriefing
   );
 
   const [chatHistory, setChatHistory] = useState([]);
@@ -67,12 +72,15 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
     async function loadVocabContext() {
       try {
         const mistakeCount = isTeacher ? 10 : 5;
-        const [known, learning, newWords, mistakes] = await Promise.all([
+        const [known, learning, newWords, mistakes, recentSessions] = await Promise.all([
           getVocabulary('known'),
           getVocabulary('learning'),
           getVocabulary('new'),
-          getMistakePatterns(mistakeCount)
+          getMistakePatterns(mistakeCount),
+          getRecentSessions(5)
         ]);
+
+        setLearnerBriefing(formatLearnerBriefing(recentSessions));
 
         if (isTeacher) {
           // Teacher mode: full vocab context + level context
@@ -291,7 +299,7 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
     return (
       <SessionSummary
         exchanges={chatHistory.filter(e => e.userText && e.aiResponse)}
-        onDone={() => handleSummaryDone(null)}
+        onDone={handleSummaryDone}
       />
     );
   }
@@ -327,6 +335,41 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
         )}
         {topic && !hasStarted && (
           <span className="text-warm-500 text-sm">{topic.chinese || topic.english}</span>
+        )}
+      </div>
+
+      {/* Session Focus */}
+      <div className="px-4 shrink-0">
+        {showFocusInput ? (
+          <div className="mb-1">
+            <textarea
+              value={sessionFocus}
+              onChange={(e) => setSessionFocus(e.target.value)}
+              placeholder={'e.g., "Focus on before/after (以前/以后)", "Use these words: 火锅, 点菜, 服务员", "Raise difficulty to HSK 4", "Explain grammar more"'}
+              className="w-full bg-warm-100 border border-warm-300 rounded-lg px-3 py-2 text-sm text-warm-900 placeholder-warm-400 resize-none focus:outline-none focus:ring-1 focus:ring-brand-500"
+              rows={3}
+              autoFocus
+            />
+            <div className="flex justify-end mt-1">
+              <button onClick={() => setShowFocusInput(false)} className="text-xs text-brand-600 hover:text-brand-700 font-medium cursor-pointer">
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowFocusInput(true)}
+            className="w-full text-left text-xs py-1.5 cursor-pointer rounded-md hover:bg-warm-100 px-2 transition-colors"
+          >
+            {sessionFocus ? (
+              <span className="text-brand-600 flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" />
+                <span className="truncate">{sessionFocus}</span>
+              </span>
+            ) : (
+              <span className="text-warm-400">+ Session focus</span>
+            )}
+          </button>
         )}
       </div>
 

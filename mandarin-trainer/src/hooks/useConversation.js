@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { getSystemPrompt, getReviewSystemPrompt, getTeacherSystemPrompt } from '../utils/claudePrompt';
 
-export default function useConversation(topic = null, vocabularyContext = null, mode = 'normal', levelContext = null) {
+export default function useConversation(topic = null, vocabularyContext = null, mode = 'normal', levelContext = null, sessionFocus = '', learnerBriefing = null) {
   const [aiResponse, setAiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -19,11 +19,20 @@ export default function useConversation(topic = null, vocabularyContext = null, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: messagesRef.current,
-          systemPrompt: mode === 'teacher'
-            ? getTeacherSystemPrompt(vocabularyContext, levelContext)
-            : mode === 'review'
-            ? getReviewSystemPrompt(vocabularyContext)
-            : getSystemPrompt(topic, vocabularyContext),
+          systemPrompt: (() => {
+            let prompt = mode === 'teacher'
+              ? getTeacherSystemPrompt(vocabularyContext, levelContext)
+              : mode === 'review'
+              ? getReviewSystemPrompt(vocabularyContext)
+              : getSystemPrompt(topic, vocabularyContext);
+            if (sessionFocus?.trim()) {
+              prompt += `\n\nSESSION FOCUS (special instructions from the learner for this session — follow these closely):\n${sessionFocus.trim()}`;
+            }
+            if (learnerBriefing) {
+              prompt += `\n\n${learnerBriefing}`;
+            }
+            return prompt;
+          })(),
           maxTokens: 1024
         })
       });
@@ -54,7 +63,7 @@ export default function useConversation(topic = null, vocabularyContext = null, 
     } finally {
       setIsLoading(false);
     }
-  }, [topic, vocabularyContext, mode, levelContext]);
+  }, [topic, vocabularyContext, mode, levelContext, sessionFocus, learnerBriefing]);
 
   const reset = useCallback(() => {
     messagesRef.current = [];

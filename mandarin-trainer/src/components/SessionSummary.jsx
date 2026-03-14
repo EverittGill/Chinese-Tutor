@@ -137,7 +137,7 @@ export default function SessionSummary({ exchanges, onDone }) {
         )}
 
         <button
-          onClick={onDone}
+          onClick={() => onDone(summary)}
           className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg py-3 transition-colors cursor-pointer"
         >
           Back to Topics
