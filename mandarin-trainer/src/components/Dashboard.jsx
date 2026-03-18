@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getVocabulary, getRecentSessions, getPronunciationTrend, getMistakePatterns } from '../utils/db';
+import { getVocabulary, getRecentSessions, getPronunciationTrend, getMistakePatterns, getSettings } from '../utils/db';
 import useAzureTTS from '../hooks/useAzureTTS';
 
 function PronunciationChart({ data }) {
@@ -74,18 +74,21 @@ export default function Dashboard({ onBack }) {
   const [trend, setTrend] = useState([]);
   const [mistakes, setMistakes] = useState([]);
   const [latestSummary, setLatestSummary] = useState(null);
-  const { speak, isSpeaking } = useAzureTTS();
+  const [ttsVoice, setTtsVoice] = useState(null);
+  const { speak, isSpeaking } = useAzureTTS(ttsVoice);
 
   useEffect(() => {
     async function load() {
-      const [known, learning, newW, recentSessions, pronTrend, mistakePatterns] = await Promise.all([
+      const [known, learning, newW, recentSessions, pronTrend, mistakePatterns, settings] = await Promise.all([
         getVocabulary('known'),
         getVocabulary('learning'),
         getVocabulary('new'),
         getRecentSessions(10),
         getPronunciationTrend(30),
-        getMistakePatterns(5)
+        getMistakePatterns(5),
+        getSettings()
       ]);
+      if (settings.tts_voice) setTtsVoice(settings.tts_voice);
 
       setVocabCounts({ known: known.length, learning: learning.length, new: newW.length });
       setSessions(recentSessions);

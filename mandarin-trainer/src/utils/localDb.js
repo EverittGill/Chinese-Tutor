@@ -15,6 +15,18 @@ function uuid() {
   return crypto.randomUUID();
 }
 
+// Settings
+
+export async function getSettings() {
+  try { return JSON.parse(localStorage.getItem('mt_settings')) || {}; }
+  catch { return {}; }
+}
+
+export async function saveSettings(settings) {
+  const existing = await getSettings();
+  localStorage.setItem('mt_settings', JSON.stringify({ ...existing, ...settings }));
+}
+
 // Sessions
 
 export async function createSession(topic) {

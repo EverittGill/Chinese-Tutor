@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { getSystemPrompt, getReviewSystemPrompt, getTeacherSystemPrompt } from '../utils/claudePrompt';
 
-export default function useConversation(topic = null, vocabularyContext = null, mode = 'normal', levelContext = null, sessionFocus = '', learnerBriefing = null) {
+export default function useConversation(topic = null, vocabularyContext = null, mode = 'normal', levelContext = null, sessionFocus = '', learnerBriefing = null, userProfile = null) {
   const [aiResponse, setAiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -27,6 +27,9 @@ export default function useConversation(topic = null, vocabularyContext = null, 
               : getSystemPrompt(topic, vocabularyContext);
             if (sessionFocus?.trim()) {
               prompt += `\n\nSESSION FOCUS (special instructions from the learner for this session — follow these closely):\n${sessionFocus.trim()}`;
+            }
+            if (userProfile) {
+              prompt += `\n\n${userProfile}`;
             }
             if (learnerBriefing) {
               prompt += `\n\n${learnerBriefing}`;
@@ -63,7 +66,7 @@ export default function useConversation(topic = null, vocabularyContext = null, 
     } finally {
       setIsLoading(false);
     }
-  }, [topic, vocabularyContext, mode, levelContext, sessionFocus, learnerBriefing]);
+  }, [topic, vocabularyContext, mode, levelContext, sessionFocus, learnerBriefing, userProfile]);
 
   const reset = useCallback(() => {
     messagesRef.current = [];

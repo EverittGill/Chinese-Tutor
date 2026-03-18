@@ -35,8 +35,8 @@ export default function ClickableWord({ word, isActive, onTap, displayMode, pron
       )}
       {isActive && (
         <span className="word-popover">
-          <span className="font-medium text-brand-600">{word.pinyin}</span>
-          <span className="text-warm-700">{word.english}</span>
+          <span className="font-medium text-brand-600">{word.english ? word.english.split(';')[0].trim() : word.pinyin}</span>
+          <span className="text-warm-700">{word.pinyin}</span>
           {pronScore != null && (
             <span className={`text-xs ${pronScore >= 80 ? 'text-green-700' : pronScore >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
               {pronScore}/100

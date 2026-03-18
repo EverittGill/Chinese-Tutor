@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
 import { getSummaryPrompt, summaryTool } from '../utils/summaryPrompt';
 import useAzureTTS from '../hooks/useAzureTTS';
+import { getSettings } from '../utils/db';
 
 export default function SessionSummary({ exchanges, onDone }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { speak, isSpeaking } = useAzureTTS();
+  const [ttsVoice, setTtsVoice] = useState(null);
+  const { speak, isSpeaking } = useAzureTTS(ttsVoice);
+
+  useEffect(() => {
+    getSettings().then(s => { if (s.tts_voice) setTtsVoice(s.tts_voice); });
+  }, []);
 
   useEffect(() => {
     async function fetchSummary() {

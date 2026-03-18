@@ -7,6 +7,7 @@ import VocabScreen from './components/VocabScreen';
 import Dashboard from './components/Dashboard';
 import FlashcardScreen from './components/FlashcardScreen';
 import PronunciationScreen from './components/PronunciationScreen';
+import SettingsScreen from './components/SettingsScreen';
 
 export default function App() {
   const [configured, setConfigured] = useState(hasAllConfig());
@@ -55,6 +56,10 @@ export default function App() {
 
   if (screen === 'pronunciation') {
     return <PronunciationScreen onBack={() => setScreen('topics')} />;
+  }
+
+  if (screen === 'settings') {
+    return <SettingsScreen onBack={() => setScreen('topics')} />;
   }
 
   return null;

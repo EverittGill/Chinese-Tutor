@@ -16,7 +16,7 @@ function buildSsml(text, voice = 'zh-CN-XiaoxiaoNeural', rate = 1.0) {
   return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="zh-CN"><voice name="${voice}"><prosody rate="${rateStr}">${escapeXml(text)}</prosody></voice></speak>`;
 }
 
-export default function useAzureTTS() {
+export default function useAzureTTS(voice) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState(null);
   const audioRef = useRef(null);
@@ -41,7 +41,7 @@ export default function useAzureTTS() {
     // Try Azure TTS first
     const tokenData = await getAzureSpeechToken();
     if (tokenData) {
-      const ssml = buildSsml(text, 'zh-CN-XiaoxiaoNeural', rate);
+      const ssml = buildSsml(text, voice || 'zh-CN-XiaoxiaoNeural', rate);
 
       try {
         const response = await fetch(
@@ -116,7 +116,7 @@ export default function useAzureTTS() {
     };
 
     window.speechSynthesis.speak(utterance);
-  }, []);
+  }, [voice]);
 
   return { speak, isSpeaking, error };
 }

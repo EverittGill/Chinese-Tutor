@@ -26,24 +26,9 @@ NEW VOCABULARY RULES:
 - Maximum 1 new word per exchange
 - Only introduce when natural in conversation
 
-USER PINYIN/ENGLISH RULES:
-- Always provide "user_pinyin" with the pinyin transcription of what the user said
+USER ENGLISH RULES:
 - Always provide "user_english" with a natural English translation of what the user said
-- For the initial greeting (no user input yet), set user_pinyin and user_english to empty strings
-
-USER WORD BREAKDOWN RULES:
-- Provide a "user_words" array breaking down the user's input word-by-word
-- Same format as "words": each entry has "chinese", "pinyin", "english"
-- Segment by natural word boundaries
-- For the initial greeting (no user input yet), set user_words to an empty array
-
-WORD BREAKDOWN RULES:
-- Provide a "words" array breaking down your entire response word-by-word
-- Segment by natural word boundaries (e.g., 你好 is one word, not 你 + 好)
-- Include punctuation attached to the last word of each clause
-- The chinese fields concatenated must exactly reproduce the full response
-
-CRITICAL: You MUST ALWAYS include "words" and "user_words" arrays, even for one-word responses like "好的". Every response needs a word-by-word breakdown. Omitting these breaks the UI.
+- For the initial greeting (no user input yet), set user_english to an empty string
 
 If you cannot understand the user at all, respond asking them to repeat: "对不起，我没听清楚，你能再说一遍吗？"`;
 }
@@ -172,24 +157,11 @@ NEW VOCABULARY RULES:
 - Choose words that illustrate grammar patterns being taught when possible
 - Include the relevant measure word when teaching nouns
 
-USER PINYIN/ENGLISH RULES:
-- Always provide "user_pinyin" with the pinyin transcription of what the user said
+USER ENGLISH RULES:
 - Always provide "user_english" with a natural English translation of what the user said
-- For the initial greeting (no user input yet), set user_pinyin and user_english to empty strings
+- For the initial greeting (no user input yet), set user_english to an empty string
 
-USER WORD BREAKDOWN RULES:
-- Provide a "user_words" array breaking down the user's input word-by-word
-- Same format as "words": each entry has "chinese", "pinyin", "english"
-- Segment by natural word boundaries
-- For the initial greeting (no user input yet), set user_words to an empty array
-
-WORD BREAKDOWN RULES:
-- Provide a "words" array breaking down your entire response word-by-word
-- Segment by natural word boundaries (e.g., 你好 is one word, not 你 + 好)
-- Include punctuation attached to the last word of each clause
-- The chinese fields concatenated must exactly reproduce the full response
-
-CRITICAL: You MUST ALWAYS include "words", "user_words", and "teaching_notes". Every response needs all three. Omitting these breaks the UI.
+CRITICAL: You MUST ALWAYS include "teaching_notes". Omitting it breaks the UI.
 
 If you cannot understand the user at all, respond asking them to repeat: "对不起，我没听清楚，你能再说一遍吗？" and use teaching_notes to encourage them.`;
 }
@@ -267,6 +239,21 @@ RETURNING STUDENT INSTRUCTIONS:
   return briefing;
 }
 
+export function formatUserProfile(settings) {
+  if (!settings) return null;
+  const { user_name, user_context } = settings;
+  if (!user_name && !user_context) return null;
+
+  let profile = 'LEARNER PROFILE:';
+  if (user_name) {
+    profile += `\n- The learner's name is ${user_name}. Address them by name occasionally (not every sentence).`;
+  }
+  if (user_context) {
+    profile += `\n- Background: ${user_context}. Tailor conversation topics and vocabulary to support this goal when natural.`;
+  }
+  return profile;
+}
+
 export function getReviewSystemPrompt(vocabularyContext = null) {
   const vocabInstruction = vocabularyContext
     ? `\nVOCABULARY CONTEXT:\n${vocabularyContext}`
@@ -297,24 +284,9 @@ CORRECTION RULES:
 NEW VOCABULARY RULES:
 - Do NOT introduce any new vocabulary. Always return an empty new_vocabulary array.
 
-USER PINYIN/ENGLISH RULES:
-- Always provide "user_pinyin" with the pinyin transcription of what the user said
+USER ENGLISH RULES:
 - Always provide "user_english" with a natural English translation of what the user said
-- For the initial greeting (no user input yet), set user_pinyin and user_english to empty strings
-
-USER WORD BREAKDOWN RULES:
-- Provide a "user_words" array breaking down the user's input word-by-word
-- Same format as "words": each entry has "chinese", "pinyin", "english"
-- Segment by natural word boundaries
-- For the initial greeting (no user input yet), set user_words to an empty array
-
-WORD BREAKDOWN RULES:
-- Provide a "words" array breaking down your entire response word-by-word
-- Segment by natural word boundaries (e.g., 你好 is one word, not 你 + 好)
-- Include punctuation attached to the last word of each clause
-- The chinese fields concatenated must exactly reproduce the full response
-
-CRITICAL: You MUST ALWAYS include "words" and "user_words" arrays, even for one-word responses like "好的". Every response needs a word-by-word breakdown. Omitting these breaks the UI.
+- For the initial greeting (no user input yet), set user_english to an empty string
 
 If you cannot understand the user at all, respond asking them to repeat: "对不起，我没听清楚，你能再说一遍吗？"`;
 }

@@ -5,8 +5,8 @@ import useConversation from '../hooks/useConversation';
 import ChatBubble from './ChatBubble';
 import CorrectionPanel from './CorrectionPanel';
 import SessionSummary from './SessionSummary';
-import { createSession, saveExchange, endSession, upsertWord, updateWordStats, recordMistakePattern, getVocabulary, getMistakePatterns, getRecentSessions } from '../utils/db';
-import { formatVocabularyContext, formatLevelContext, formatLearnerBriefing } from '../utils/claudePrompt';
+import { createSession, saveExchange, endSession, upsertWord, updateWordStats, recordMistakePattern, getVocabulary, getMistakePatterns, getRecentSessions, getSettings } from '../utils/db';
+import { formatVocabularyContext, formatLevelContext, formatLearnerBriefing, formatUserProfile } from '../utils/claudePrompt';
 
 const DISPLAY_MODES = ['chinese', 'chinese+pinyin', 'chinese+pinyin+english'];
 
@@ -16,21 +16,24 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
   const [vocabContext, setVocabContext] = useState(null);
   const [levelContext, setLevelContext] = useState(null);
   const [learnerBriefing, setLearnerBriefing] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [vocabLoaded, setVocabLoaded] = useState(false);
+  const [ttsVoice, setTtsVoice] = useState(null);
 
   const mode = isTeacher ? 'teacher' : isReview ? 'review' : 'normal';
   const [sessionFocus, setSessionFocus] = useState('');
   const [showFocusInput, setShowFocusInput] = useState(false);
 
   const { recognizedText, turnId, interimText, isListening, startListening, stopListening, error: sttError, pronunciationData } = useAzureSpeech();
-  const { speak, isSpeaking, error: ttsError } = useAzureTTS();
+  const { speak, isSpeaking, error: ttsError } = useAzureTTS(ttsVoice);
   const { sendMessage, aiResponse, isLoading, error: chatError, reset } = useConversation(
     (isReview || isTeacher) ? null : (topic?.prompt || null),
     vocabContext,
     mode,
     levelContext,
     sessionFocus,
-    learnerBriefing
+    learnerBriefing,
+    userProfile
   );
 
   const [chatHistory, setChatHistory] = useState([]);
@@ -72,15 +75,18 @@ export default function ConversationScreen({ topic = null, onBack = null }) {
     async function loadVocabContext() {
       try {
         const mistakeCount = isTeacher ? 10 : 5;
-        const [known, learning, newWords, mistakes, recentSessions] = await Promise.all([
+        const [known, learning, newWords, mistakes, recentSessions, settings] = await Promise.all([
           getVocabulary('known'),
           getVocabulary('learning'),
           getVocabulary('new'),
           getMistakePatterns(mistakeCount),
-          getRecentSessions(5)
+          getRecentSessions(5),
+          getSettings()
         ]);
 
         setLearnerBriefing(formatLearnerBriefing(recentSessions));
+        setUserProfile(formatUserProfile(settings));
+        if (settings.tts_voice) setTtsVoice(settings.tts_voice);
 
         if (isTeacher) {
           // Teacher mode: full vocab context + level context

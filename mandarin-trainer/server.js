@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import Anthropic from '@anthropic-ai/sdk';
+import { segmentAndAnnotate, generatePinyin } from './api/segmentWords.js';
 
 const app = express();
 app.use(cors());
@@ -16,7 +17,6 @@ const conversationTools = [{
     type: "object",
     properties: {
       response: { type: "string", description: "Chinese response text (simplified characters)" },
-      pinyin: { type: "string", description: "Pinyin for the response" },
       english: { type: "string", description: "English translation" },
       corrections: {
         type: "array",
@@ -47,42 +47,33 @@ const conversationTools = [{
           required: ["word", "pinyin", "english", "context"]
         }
       },
-      user_pinyin: { type: "string", description: "Pinyin transcription of the user's input" },
       user_english: { type: "string", description: "Natural English translation of what the user said" },
-      user_words: {
-        type: "array",
-        description: "Word-by-word breakdown of the user's input",
-        items: {
-          type: "object",
-          properties: {
-            chinese: { type: "string" },
-            pinyin: { type: "string" },
-            english: { type: "string" }
-          },
-          required: ["chinese", "pinyin", "english"]
-        }
-      },
-      words: {
-        type: "array",
-        description: "Word-by-word breakdown of the response in order",
-        items: {
-          type: "object",
-          properties: {
-            chinese: { type: "string" },
-            pinyin: { type: "string" },
-            english: { type: "string" }
-          },
-          required: ["chinese", "pinyin", "english"]
-        }
-      },
       teaching_notes: {
         type: "string",
         description: "English teaching notes: grammar explanations, pattern tips, level observations, encouragement. 1-3 sentences. Teacher mode only."
       }
     },
-    required: ["response", "pinyin", "english", "corrections", "new_vocabulary", "words", "user_pinyin", "user_english", "user_words"]
+    required: ["response", "english", "corrections", "new_vocabulary", "user_english"]
   }
 }];
+
+// Chinese character detection regex
+const chineseCharRegex = /[\u4e00-\u9fff\u3400-\u4dbf]/;
+
+/**
+ * Extract the user's Chinese text from the last message, stripping pronunciation data suffix.
+ */
+function extractUserChinese(messages) {
+  if (!messages || messages.length === 0) return null;
+  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+  if (!lastUserMsg) return null;
+  const text = typeof lastUserMsg.content === 'string'
+    ? lastUserMsg.content
+    : lastUserMsg.content?.find?.(b => b.type === 'text')?.text || '';
+  // Strip pronunciation data suffix
+  const cleaned = text.replace(/\n\n\[PRONUNCIATION DATA:[\s\S]*\]$/, '').trim();
+  return chineseCharRegex.test(cleaned) ? cleaned : null;
+}
 
 app.post('/api/chat', async (req, res) => {
   try {
@@ -105,7 +96,22 @@ app.post('/api/chat', async (req, res) => {
     // Extract the tool_use block
     const toolBlock = response.content.find(b => b.type === 'tool_use');
     if (toolBlock) {
-      res.json({ content: toolBlock.input });
+      const result = toolBlock.input;
+
+      // Post-process: generate word breakdowns and pinyin server-side
+      result.words = segmentAndAnnotate(result.response);
+      result.pinyin = generatePinyin(result.response);
+
+      const userChinese = extractUserChinese(messages);
+      if (userChinese) {
+        result.user_words = segmentAndAnnotate(userChinese);
+        result.user_pinyin = generatePinyin(userChinese);
+      } else {
+        result.user_words = [];
+        result.user_pinyin = '';
+      }
+
+      res.json({ content: result });
     } else {
       // Fallback: return text content
       const textBlock = response.content.find(b => b.type === 'text');

@@ -68,7 +68,10 @@ CREATE TABLE review_log (
 -- user_settings: single row for preferences/streaks
 -- ============================================================
 CREATE TABLE user_settings (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  id int PRIMARY KEY DEFAULT 1,
+  user_name text,
+  user_context text,
+  tts_voice text DEFAULT 'zh-CN-XiaoxiaoNeural',
   target_hsk_level int DEFAULT 3,
   daily_goal_minutes int DEFAULT 15,
   current_streak int DEFAULT 0,
@@ -76,7 +79,8 @@ CREATE TABLE user_settings (
   last_practice_date date,
   preferred_tts_speed float DEFAULT 1.0,
   pinyin_display_mode int DEFAULT 1,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
 
 -- ============================================================

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import useAzureSpeech from '../hooks/useAzureSpeech';
 import useAzureTTS from '../hooks/useAzureTTS';
-import { getPronunciationSentences, savePronunciationAttempt } from '../utils/db';
+import { getPronunciationSentences, savePronunciationAttempt, getSettings } from '../utils/db';
 import { generateSentenceFeedback } from '../utils/pronunciationFeedback';
 
 const COLD_START_SENTENCES = [
@@ -27,21 +27,27 @@ export default function PronunciationScreen({ onBack }) {
   const [feedback, setFeedback] = useState(null);
   const [attemptScores, setAttemptScores] = useState([]);
 
+  const [ttsVoice, setTtsVoice] = useState(null);
+
   const { turnId, interimText, isListening, startListening, stopListening, error: sttError, pronunciationData } = useAzureSpeech();
-  const { speak, isSpeaking } = useAzureTTS();
+  const { speak, isSpeaking } = useAzureTTS(ttsVoice);
   const lastProcessedTurnRef = useRef(0);
 
   const currentSentence = sentences[currentIdx] || null;
 
-  // Load sentences
+  // Load sentences and settings
   useEffect(() => {
     async function load() {
-      const fetched = await getPronunciationSentences(15);
+      const [fetched, settings] = await Promise.all([
+        getPronunciationSentences(15),
+        getSettings()
+      ]);
       if (fetched && fetched.length > 0) {
         setSentences(fetched);
       } else {
         setSentences(COLD_START_SENTENCES);
       }
+      if (settings.tts_voice) setTtsVoice(settings.tts_voice);
       setPhase('LISTEN');
     }
     load();

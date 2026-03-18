@@ -6,6 +6,28 @@ function useSupabase() {
   return !!getSupabaseClient();
 }
 
+// Settings
+
+export async function getSettings() {
+  if (!useSupabase()) return local.getSettings();
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('user_settings')
+    .select('*')
+    .single();
+  if (error || !data) return local.getSettings();
+  return data;
+}
+
+export async function saveSettings(settings) {
+  if (!useSupabase()) return local.saveSettings(settings);
+  const sb = getSupabaseClient();
+  const { error } = await sb
+    .from('user_settings')
+    .upsert({ id: 1, ...settings, updated_at: new Date().toISOString() });
+  if (error) console.error('saveSettings:', error);
+}
+
 // Sessions
 
 export async function createSession(topic) {
