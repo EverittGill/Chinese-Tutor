@@ -160,7 +160,7 @@ export default function FlashcardScreen({ onBack }) {
   const lastProcessedTurnRef = useRef(0);    // Deduplicates speech recognition results (Azure SDK can fire multiple events per utterance)
   const undoTimerRef = useRef(null);         // Handle for the 4-second undo toast timeout
 
-  const { recognizedText, turnId, interimText, isListening, startListening, stopListening, error: sttError, pronunciationData } = useAzureSpeech();
+  const { recognizedText, turnId, interimText, isListening, startListening, stopListening, error: sttError, pronunciationData, ready: speechReady } = useAzureSpeech();
   const { speak, isSpeaking, error: ttsError } = useAzureTTS(ttsVoice);
 
   // --- Initial load: fetch due cards, shuffle, apply user settings ---
@@ -424,9 +424,9 @@ export default function FlashcardScreen({ onBack }) {
   }, []);
 
   const handleMicDown = useCallback(() => {
-    if (isListening || isSpeaking) return;
+    if (!speechReady || isListening || isSpeaking) return;
     startListening(currentCard?.word || '');
-  }, [isListening, isSpeaking, startListening, currentCard]);
+  }, [speechReady, isListening, isSpeaking, startListening, currentCard]);
 
   const handleMicUp = useCallback(() => {
     stopListening();
@@ -783,10 +783,13 @@ export default function FlashcardScreen({ onBack }) {
               onPointerUp={handleMicUp}
               onPointerLeave={handleMicUp}
               onContextMenu={(e) => e.preventDefault()}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all cursor-pointer select-none touch-none
-                ${isListening
-                  ? 'bg-red-500 scale-110 mic-pulse'
-                  : 'bg-warm-200 hover:bg-warm-300 active:scale-95'
+              disabled={!speechReady || isSpeaking}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all select-none touch-none
+                ${!speechReady
+                  ? 'bg-warm-200 opacity-50 cursor-not-allowed'
+                  : isListening
+                    ? 'bg-red-500 scale-110 mic-pulse cursor-pointer'
+                    : 'bg-warm-200 hover:bg-warm-300 active:scale-95 cursor-pointer'
                 }
               `}
             >

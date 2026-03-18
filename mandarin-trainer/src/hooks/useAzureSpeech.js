@@ -136,12 +136,14 @@ function useAzureRecognition() {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState(null);
   const [pronunciationData, setPronunciationData] = useState(null);
+  const [sdkReady, setSdkReady] = useState(false);
   const recognizerRef = useRef(null);
   const sdkRef = useRef(null);
   const accumulatedRef = useRef({ text: '', words: [], accuracies: [], fluencies: [], completeness: null });
   const lastInterimRef = useRef('');
   const stoppingRef = useRef(false);
   const stopTimeoutRef = useRef(null);
+  const initializingRef = useRef(false);
 
   const getSdk = useCallback(async () => {
     if (!sdkRef.current) {
@@ -149,6 +151,11 @@ function useAzureRecognition() {
     }
     return sdkRef.current;
   }, []);
+
+  // Pre-warm the SDK on mount so it's loaded before the user taps
+  useEffect(() => {
+    getSdk().then(() => setSdkReady(true));
+  }, [getSdk]);
 
   const streamRef = useRef(null);
 
@@ -211,6 +218,9 @@ function useAzureRecognition() {
   }, []);
 
   const startListening = useCallback(async (referenceText = '') => {
+    if (initializingRef.current) return; // Already starting
+    initializingRef.current = true;
+
     setError(null);
     setIsListening(true);
     setPronunciationData(null);
@@ -291,13 +301,15 @@ function useAzureRecognition() {
       };
 
       recognizer.startContinuousRecognitionAsync(
-        () => { /* started successfully */ },
+        () => { initializingRef.current = false; },
         (err) => {
+          initializingRef.current = false;
           setIsListening(false);
           setError(`Recognition error: ${err}`);
         }
       );
     } catch (err) {
+      initializingRef.current = false;
       setIsListening(false);
       setError(`Speech setup error: ${err.message}`);
     }
@@ -399,7 +411,7 @@ function useAzureRecognition() {
     };
   }, []);
 
-  return { recognizedText, turnId, interimText, isListening, startListening, stopListening, error, pronunciationData };
+  return { recognizedText, turnId, interimText, isListening, startListening, stopListening, error, pronunciationData, ready: sdkReady };
 }
 
 export default function useAzureSpeech() {
@@ -417,8 +429,9 @@ export default function useAzureSpeech() {
   const web = useWebSpeechRecognition();
 
   if (!checked) {
-    return { recognizedText: '', turnId: 0, interimText: '', isListening: false, startListening: () => {}, stopListening: () => {}, error: null, pronunciationData: null };
+    return { recognizedText: '', turnId: 0, interimText: '', isListening: false, startListening: () => {}, stopListening: () => {}, error: null, pronunciationData: null, ready: false };
   }
 
-  return useAzure ? azure : web;
+  const result = useAzure ? azure : web;
+  return { ...result, ready: checked && (result.ready !== false) };
 }
