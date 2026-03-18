@@ -35,7 +35,17 @@ export default function ClickableWord({ word, isActive, onTap, displayMode, pron
       )}
       {isActive && (
         <span className="word-popover">
-          <span className="font-medium text-brand-600">{word.english ? word.english.split(';')[0].trim() : word.pinyin}</span>
+          {word.english && (() => {
+            const defs = word.english.split(';').map(d => d.trim()).filter(Boolean);
+            const primary = defs[0];
+            const rest = defs.slice(1, 4).join('; ');
+            return (
+              <>
+                <span className="font-medium text-brand-600">{primary}</span>
+                {rest && <span className="text-warm-500 text-[10px]">{rest}</span>}
+              </>
+            );
+          })()}
           <span className="text-warm-700">{word.pinyin}</span>
           {pronScore != null && (
             <span className={`text-xs ${pronScore >= 80 ? 'text-green-700' : pronScore >= 60 ? 'text-amber-600' : 'text-red-600'}`}>

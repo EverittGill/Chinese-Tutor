@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { importWords } from '../utils/db';
+import { MODELS } from '../utils/models';
 
 const convertTool = {
   name: "convert_vocabulary",
@@ -110,6 +111,7 @@ Rules:
           messages: [{ role: 'user', content: `Convert these vocabulary entries:\n\n${numberedList}` }],
           tools: [convertTool],
           maxTokens: 16384,
+          model: MODELS.HAIKU,
         }),
       });
 

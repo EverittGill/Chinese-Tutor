@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getSummaryPrompt, summaryTool } from '../utils/summaryPrompt';
 import useAzureTTS from '../hooks/useAzureTTS';
 import { getSettings } from '../utils/db';
+import { MODELS } from '../utils/models';
 
 export default function SessionSummary({ exchanges, onDone }) {
   const [summary, setSummary] = useState(null);
@@ -28,7 +29,8 @@ export default function SessionSummary({ exchanges, onDone }) {
             messages: [{ role: 'user', content: `Here is the session data:\n\n${exchangeText}\n\nPlease generate a session summary.` }],
             systemPrompt: getSummaryPrompt(),
             maxTokens: 2048,
-            tools: [summaryTool]
+            tools: [summaryTool],
+            model: MODELS.HAIKU,
           })
         });
 

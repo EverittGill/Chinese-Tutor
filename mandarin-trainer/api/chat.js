@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { segmentAndAnnotate, generatePinyin } from './segmentWords.js';
+import { translateWords } from './translateWords.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -72,10 +72,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   try {
-    const { messages, systemPrompt, maxTokens, tools: clientTools } = req.body;
+    const { messages, systemPrompt, maxTokens, tools: clientTools, model } = req.body;
 
     const requestParams = {
-      model: 'claude-sonnet-4-6',
+      model: model || 'claude-sonnet-4-6',
       max_tokens: maxTokens || 1024,
       system: systemPrompt,
       messages,
@@ -91,18 +91,17 @@ export default async function handler(req, res) {
     if (toolBlock) {
       const result = toolBlock.input;
 
-      // Post-process: generate word breakdowns and pinyin server-side
-      result.words = segmentAndAnnotate(result.response);
-      result.pinyin = generatePinyin(result.response);
-
+      // Post-process: generate word breakdowns and pinyin via Haiku (parallel)
       const userChinese = extractUserChinese(messages);
-      if (userChinese) {
-        result.user_words = segmentAndAnnotate(userChinese);
-        result.user_pinyin = generatePinyin(userChinese);
-      } else {
-        result.user_words = [];
-        result.user_pinyin = '';
-      }
+      const [aiWords, userTranslation] = await Promise.all([
+        translateWords(client, result.response, result.english),
+        userChinese ? translateWords(client, userChinese) : Promise.resolve({ words: [], pinyin: '' }),
+      ]);
+
+      result.words = aiWords.words;
+      result.pinyin = aiWords.pinyin;
+      result.user_words = userTranslation.words;
+      result.user_pinyin = userTranslation.pinyin;
 
       res.json({ content: result });
     } else {
