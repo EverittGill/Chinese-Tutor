@@ -89,7 +89,7 @@ export default async function handler(req, res) {
     const requestParams = {
       model: selectedModel,
       max_tokens: maxTokens || 1024,
-      system: systemPrompt,
+      system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
       messages,
     };
 
@@ -97,12 +97,35 @@ export default async function handler(req, res) {
     requestParams.tools = tools;
     requestParams.tool_choice = { type: "tool", name: tools[0].name };
 
+    // Cache conversation history — mark the second-to-last user message with cache_control.
+    // This follows Anthropic's recommended multi-turn pattern: cache_control is supported on
+    // system, user, and tool blocks (NOT assistant messages). Each new turn only pays for the
+    // latest assistant reply + new user message.
+    const userIndices = messages.reduce((acc, m, i) => m.role === 'user' ? [...acc, i] : acc, []);
+    if (userIndices.length >= 2) {
+      const idx = userIndices[userIndices.length - 2]; // second-to-last user message
+      const text = messages[idx].content;
+      messages[idx] = {
+        ...messages[idx],
+        content: typeof text === 'string'
+          ? [{ type: 'text', text, cache_control: { type: 'ephemeral' } }]
+          : text, // already content blocks, leave as-is
+      };
+    }
+
     const response = await client.messages.create(requestParams);
+
+    console.log('[cache]', {
+      model: selectedModel,
+      input: response.usage.input_tokens,
+      cache_create: response.usage.cache_creation_input_tokens || 0,
+      cache_read: response.usage.cache_read_input_tokens || 0,
+    });
 
     // Track usage from main call
     let totalCost = 0;
     if (response.usage) {
-      totalCost += calculateCost(selectedModel, response.usage.input_tokens, response.usage.output_tokens);
+      totalCost += calculateCost(selectedModel, response.usage.input_tokens, response.usage.output_tokens, response.usage.cache_creation_input_tokens || 0, response.usage.cache_read_input_tokens || 0);
     }
 
     const toolBlock = response.content.find(b => b.type === 'tool_use');
@@ -118,10 +141,10 @@ export default async function handler(req, res) {
 
       // Track Haiku translation costs
       if (aiWords.usage) {
-        totalCost += calculateCost(aiWords.usage.model, aiWords.usage.input_tokens, aiWords.usage.output_tokens);
+        totalCost += calculateCost(aiWords.usage.model, aiWords.usage.input_tokens, aiWords.usage.output_tokens, aiWords.usage.cache_creation_input_tokens || 0, aiWords.usage.cache_read_input_tokens || 0);
       }
       if (userTranslation.usage) {
-        totalCost += calculateCost(userTranslation.usage.model, userTranslation.usage.input_tokens, userTranslation.usage.output_tokens);
+        totalCost += calculateCost(userTranslation.usage.model, userTranslation.usage.input_tokens, userTranslation.usage.output_tokens, userTranslation.usage.cache_creation_input_tokens || 0, userTranslation.usage.cache_read_input_tokens || 0);
       }
 
       result.words = aiWords.words;
@@ -144,6 +167,10 @@ export default async function handler(req, res) {
         credits: {
           cost: totalCost,
           remaining: deductResult.error ? 0 : deductResult.remainingBalance,
+          cache: {
+            creation: response.usage.cache_creation_input_tokens || 0,
+            read: response.usage.cache_read_input_tokens || 0,
+          },
         },
       });
     } else {
@@ -157,6 +184,10 @@ export default async function handler(req, res) {
           credits: {
             cost: totalCost,
             remaining: deductResult.error ? 0 : deductResult.remainingBalance,
+            cache: {
+              creation: response.usage.cache_creation_input_tokens || 0,
+              read: response.usage.cache_read_input_tokens || 0,
+            },
           },
         });
       } else {

@@ -18,6 +18,11 @@ CONVERSATION RULES:
 ${topicInstruction}
 ${vocabInstruction}
 
+VARIETY AND NATURALNESS:
+- Never open the same way twice in a row. Vary greetings, openers, and conversation starters.
+- Mix question types: yes/no, open-ended, opinion, hypothetical, comparison, storytelling prompts.
+- Don't always follow greet→question→respond. Sometimes share an observation, tell a short anecdote, express an opinion, or describe a situation for the learner to react to.
+
 CORRECTION RULES:
 - Maximum 3 corrections per exchange. Focus on the most impactful ones.
 - Types: "grammar", "vocabulary", "pronunciation"
@@ -140,6 +145,11 @@ TEACHING NOTES FORMAT:
 - CRITICAL: Every Chinese word or character mentioned in teaching_notes MUST include its pinyin in parentheses. The learner cannot read characters without pinyin. Write 火锅 (huǒguō) not just 火锅. Write 了 (le) not just 了. No exceptions.
 - When explaining grammar patterns, show the full example with pinyin: e.g., "我明天去 (wǒ míngtiān qù) — time word before verb"
 
+VARIETY IN TEACHING:
+- Vary your opening each session: warm-up question, quick review, jump into a scenario, comment on something new.
+- Rotate techniques: recasting, fill-in-the-blank prompting, asking the learner to self-correct, offering two options to choose from.
+- Don't always teach the same way. Mix direct instruction, guided discovery, and free conversation within a session.
+
 TEACHING APPROACH:
 - First exchange: Greet warmly in Chinese, assess level in teaching_notes, set expectations
 - When learner makes NEW error type: Detailed explanation in teaching_notes (what the rule is, why it matters, example pattern with pinyin)
@@ -187,6 +197,12 @@ export function formatLearnerBriefing(recentSessions) {
   if (completed.length === 0) return null;
 
   const sessions = completed.slice(0, 3);
+
+  // Collect recent topics for anti-repetition
+  const recentTopics = sessions
+    .map(s => s.topic || 'Open Conversation')
+    .filter((t, i, arr) => arr.indexOf(t) === i);
+
   let briefing = `LEARNER BRIEFING — RETURNING STUDENT:\nThis learner has completed ${completed.length} previous session${completed.length === 1 ? '' : 's'}.\n`;
 
   sessions.forEach((session, i) => {
@@ -229,11 +245,13 @@ RETURNING STUDENT INSTRUCTIONS:
 - Do NOT introduce yourself or ask the student's name — you already know them.
 - Skip basic pleasantries. Reference something from their recent sessions.
 - Dive directly into conversation at their level.
-- Naturally create opportunities to practice their weak areas.`;
+- Naturally create opportunities to practice their weak areas.
+- AVOID repeating these recent topics unless the learner brings them up: ${recentTopics.join(', ')}. Explore fresh angles instead.
+- Your opening should be DIFFERENT from previous sessions — be creative.`;
 
   const lastSummary = sessions[0]?.summary_json;
   if (lastSummary?.suggested_topics?.length > 0) {
-    briefing += `\n- Suggested topics from last session: ${lastSummary.suggested_topics.join(', ')}`;
+    briefing += `\n- Suggested NEW topics to try: ${lastSummary.suggested_topics.join(', ')}`;
   }
 
   return briefing;
@@ -276,6 +294,10 @@ CONVERSATION RULES:
 2. Ask follow-up questions. React to what they say. Be a real conversation partner.
 3. If the user makes a grammar mistake, model the correct form naturally in your response.
 4. Start by greeting the user and asking what they want to talk about, using only known vocabulary.
+
+VARIETY AND NATURALNESS:
+- Vary greetings and starters every session. Don't always ask what they want to talk about — sometimes propose a topic, describe a situation, or start with an observation.
+- Find creative ways to combine known words into fresh conversation directions.
 
 CORRECTION RULES:
 - Maximum 3 corrections per exchange. Focus on the most impactful ones.
