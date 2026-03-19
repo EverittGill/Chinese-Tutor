@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { importWords } from '../utils/db';
 import { MODELS } from '../utils/models';
+import { apiFetch } from '../utils/apiFetch';
 
 const convertTool = {
   name: "convert_vocabulary",
@@ -95,9 +96,8 @@ export default function VocabImport({ onImported }) {
       .join('\n');
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await apiFetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           systemPrompt: `You are a Chinese language expert. Convert the following pinyin+english vocabulary entries to Chinese characters using the convert_vocabulary tool.
 

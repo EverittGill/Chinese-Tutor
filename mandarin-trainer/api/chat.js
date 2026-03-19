@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { translateWords } from './translateWords.js';
+import { authenticateRequest, checkCredits, deductCredits, calculateCost } from './authMiddleware.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -71,11 +72,22 @@ function extractUserChinese(messages) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // Authenticate
+  const auth = await authenticateRequest(req);
+  if (auth.error) return res.status(auth.status).json({ error: auth.error });
+
+  // Check credits
+  const balance = await checkCredits(auth.user.id);
+  if (balance <= 0) {
+    return res.status(402).json({ error: 'Out of credits — enter a promo code to continue' });
+  }
+
   try {
     const { messages, systemPrompt, maxTokens, tools: clientTools, model } = req.body;
 
+    const selectedModel = model || 'claude-sonnet-4-6';
     const requestParams = {
-      model: model || 'claude-sonnet-4-6',
+      model: selectedModel,
       max_tokens: maxTokens || 1024,
       system: systemPrompt,
       messages,
@@ -87,6 +99,12 @@ export default async function handler(req, res) {
 
     const response = await client.messages.create(requestParams);
 
+    // Track usage from main call
+    let totalCost = 0;
+    if (response.usage) {
+      totalCost += calculateCost(selectedModel, response.usage.input_tokens, response.usage.output_tokens);
+    }
+
     const toolBlock = response.content.find(b => b.type === 'tool_use');
     if (toolBlock) {
       const result = toolBlock.input;
@@ -95,18 +113,55 @@ export default async function handler(req, res) {
       const userChinese = extractUserChinese(messages);
       const [aiWords, userTranslation] = await Promise.all([
         translateWords(client, result.response, result.english),
-        userChinese ? translateWords(client, userChinese) : Promise.resolve({ words: [], pinyin: '' }),
+        userChinese ? translateWords(client, userChinese) : Promise.resolve({ words: [], pinyin: '', usage: null }),
       ]);
+
+      // Track Haiku translation costs
+      if (aiWords.usage) {
+        totalCost += calculateCost(aiWords.usage.model, aiWords.usage.input_tokens, aiWords.usage.output_tokens);
+      }
+      if (userTranslation.usage) {
+        totalCost += calculateCost(userTranslation.usage.model, userTranslation.usage.input_tokens, userTranslation.usage.output_tokens);
+      }
 
       result.words = aiWords.words;
       result.pinyin = aiWords.pinyin;
       result.user_words = userTranslation.words;
       result.user_pinyin = userTranslation.pinyin;
 
-      res.json({ content: result });
+      // Deduct credits
+      const totalInputTokens = (response.usage?.input_tokens || 0)
+        + (aiWords.usage?.input_tokens || 0)
+        + (userTranslation.usage?.input_tokens || 0);
+      const totalOutputTokens = (response.usage?.output_tokens || 0)
+        + (aiWords.usage?.output_tokens || 0)
+        + (userTranslation.usage?.output_tokens || 0);
+
+      const deductResult = await deductCredits(auth.user.id, totalCost, selectedModel, totalInputTokens, totalOutputTokens, 'chat');
+
+      res.json({
+        content: result,
+        credits: {
+          cost: totalCost,
+          remaining: deductResult.error ? 0 : deductResult.remainingBalance,
+        },
+      });
     } else {
       const textBlock = response.content.find(b => b.type === 'text');
-      res.json({ content: textBlock?.text || '' });
+
+      // Still deduct cost for the main call
+      if (totalCost > 0) {
+        const deductResult = await deductCredits(auth.user.id, totalCost, selectedModel, response.usage?.input_tokens || 0, response.usage?.output_tokens || 0, 'chat');
+        res.json({
+          content: textBlock?.text || '',
+          credits: {
+            cost: totalCost,
+            remaining: deductResult.error ? 0 : deductResult.remainingBalance,
+          },
+        });
+      } else {
+        res.json({ content: textBlock?.text || '' });
+      }
     }
   } catch (err) {
     res.status(500).json({ error: err.message });

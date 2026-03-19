@@ -52,7 +52,7 @@ const systemPrompt = `You are a Chinese-English translator. Given a list of Chin
  * @returns {Promise<{ words: Array<{chinese: string, pinyin: string, english: string}>, pinyin: string }>}
  */
 export async function translateWords(client, chineseText, englishContext) {
-  if (!chineseText) return { words: [], pinyin: '' };
+  if (!chineseText) return { words: [], pinyin: '', usage: null };
 
   // Step 1: Segment and annotate with CEDICT (word boundaries + pinyin + dictionary english)
   const words = segmentAndAnnotate(chineseText);
@@ -65,7 +65,7 @@ export async function translateWords(client, chineseText, englishContext) {
       .filter(w => !w.chinese.match(/^[\s，。！？、：；…～⋯!?.,;:()"'«»《》『』【】（）]+$/))
       .map(w => w.chinese.replace(/[，。！？、：；…～⋯!?.,;:()"'«»《》『』【】（）]+$/, ''));
 
-    if (chineseWords.length === 0) return { words, pinyin: pinyinStr };
+    if (chineseWords.length === 0) return { words, pinyin: pinyinStr, usage: null };
 
     const wordList = chineseWords.map((w, i) => `${i + 1}. ${w}`).join('\n');
 
@@ -81,6 +81,12 @@ export async function translateWords(client, chineseText, englishContext) {
       tools: [contextualTranslationTool],
       tool_choice: { type: "tool", name: "contextual_translations" },
     });
+
+    const haikuUsage = response.usage ? {
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      model: HAIKU_MODEL,
+    } : null;
 
     const toolBlock = response.content.find(b => b.type === 'tool_use');
     if (toolBlock?.input?.translations) {
@@ -100,10 +106,11 @@ export async function translateWords(client, chineseText, englishContext) {
         // Otherwise keep CEDICT english as-is
       }
     }
+    return { words, pinyin: pinyinStr, usage: haikuUsage };
   } catch (err) {
     console.error('translateWords: Haiku translation failed, using CEDICT english:', err.message);
     // words already have CEDICT english, just return them
   }
 
-  return { words, pinyin: pinyinStr };
+  return { words, pinyin: pinyinStr, usage: null };
 }

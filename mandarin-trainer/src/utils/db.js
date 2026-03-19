@@ -6,6 +6,14 @@ function useSupabase() {
   return !!getSupabaseClient();
 }
 
+// Get current authenticated user's ID
+async function getCurrentUserId() {
+  const sb = getSupabaseClient();
+  if (!sb) return null;
+  const { data: { user } } = await sb.auth.getUser();
+  return user?.id ?? null;
+}
+
 // Settings
 
 export async function getSettings() {
@@ -15,16 +23,21 @@ export async function getSettings() {
     .from('user_settings')
     .select('*')
     .single();
-  if (error || !data) return local.getSettings();
+  if (error || !data) {
+    // New user — return defaults
+    return { user_name: '', user_context: '', tts_voice: 'zh-CN-XiaoxiaoNeural', pinyin_display_mode: 'characters_only' };
+  }
   return data;
 }
 
 export async function saveSettings(settings) {
   if (!useSupabase()) return local.saveSettings(settings);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
   const sb = getSupabaseClient();
   const { error } = await sb
     .from('user_settings')
-    .upsert({ id: 1, ...settings, updated_at: new Date().toISOString() });
+    .upsert({ user_id: userId, ...settings, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
   if (error) console.error('saveSettings:', error);
 }
 
@@ -32,10 +45,12 @@ export async function saveSettings(settings) {
 
 export async function createSession(topic) {
   if (!useSupabase()) return local.createSession(topic);
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
   const sb = getSupabaseClient();
   const { data, error } = await sb
     .from('sessions')
-    .insert({ topic })
+    .insert({ topic, user_id: userId })
     .select('id')
     .single();
   if (error) { console.error('createSession:', error); return null; }
@@ -64,6 +79,8 @@ export async function endSession(id, stats) {
 
 export async function saveExchange(sessionId, turnNumber, userData, aiData) {
   if (!useSupabase()) return local.saveExchange(sessionId, turnNumber, userData, aiData);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
   const sb = getSupabaseClient();
   const { error } = await sb
     .from('exchanges')
@@ -74,7 +91,8 @@ export async function saveExchange(sessionId, turnNumber, userData, aiData) {
       user_pronunciation_score: userData.pronunciationScore,
       user_fluency_score: userData.fluencyScore,
       user_word_scores: userData.wordScores,
-      ai_response_json: aiData
+      ai_response_json: aiData,
+      user_id: userId,
     });
   if (error) console.error('saveExchange:', error);
 }
@@ -122,6 +140,8 @@ export async function getVocabulary(status = null) {
 
 export async function upsertWord(word, pinyin, english, source = 'conversation', contextSentence = null) {
   if (!useSupabase()) return local.upsertWord(word, pinyin, english, source, contextSentence);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
   const sb = getSupabaseClient();
 
   // 1. Upsert into vocabulary (dictionary)
@@ -135,6 +155,7 @@ export async function upsertWord(word, pinyin, english, source = 'conversation',
   // 2. Upsert into user_vocabulary (progress)
   const uvData = {
     vocabulary_id: vocabRow.id,
+    user_id: userId,
     source,
     status: 'learning',
     updated_at: new Date().toISOString()
@@ -143,7 +164,7 @@ export async function upsertWord(word, pinyin, english, source = 'conversation',
 
   const { error: uvErr } = await sb
     .from('user_vocabulary')
-    .upsert(uvData, { onConflict: 'vocabulary_id' });
+    .upsert(uvData, { onConflict: 'user_id, vocabulary_id' });
   if (uvErr) console.error('upsertWord user_vocab:', uvErr);
 }
 
@@ -196,6 +217,8 @@ export async function updateWordStats(word, wasCorrect, pronunciationScore) {
 
 export async function importWords(wordList, status = 'new') {
   if (!useSupabase()) return local.importWords(wordList, status);
+  const userId = await getCurrentUserId();
+  if (!userId) return 0;
   const sb = getSupabaseClient();
   let count = 0;
 
@@ -213,10 +236,11 @@ export async function importWords(wordList, status = 'new') {
       .from('user_vocabulary')
       .upsert({
         vocabulary_id: vocabRow.id,
+        user_id: userId,
         status,
         source: 'import',
         updated_at: new Date().toISOString()
-      }, { onConflict: 'vocabulary_id' });
+      }, { onConflict: 'user_id, vocabulary_id' });
     if (!uvErr) count++;
   }
 
@@ -295,6 +319,8 @@ export async function updateFSRSCard(userVocabId, fsrsUpdate) {
 
 export async function saveReviewLog(userVocabId, rating, durationMs, scheduledDays, actualDays) {
   if (!useSupabase()) return local.saveReviewLog(userVocabId, rating, durationMs, scheduledDays, actualDays);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
   const sb = getSupabaseClient();
   const { error } = await sb
     .from('review_log')
@@ -303,7 +329,8 @@ export async function saveReviewLog(userVocabId, rating, durationMs, scheduledDa
       rating,
       review_duration_ms: durationMs,
       scheduled_days: scheduledDays,
-      actual_days: actualDays
+      actual_days: actualDays,
+      user_id: userId,
     });
   if (error) console.error('saveReviewLog:', error);
 }
@@ -312,9 +339,11 @@ export async function saveReviewLog(userVocabId, rating, durationMs, scheduledDa
 
 export async function recordMistakePattern(type, description, original, corrected) {
   if (!useSupabase()) return local.recordMistakePattern(type, description, original, corrected);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
   const sb = getSupabaseClient();
 
-  // Check if pattern exists
+  // Check if pattern exists (RLS filters by user_id automatically)
   const { data } = await sb
     .from('mistake_patterns')
     .select('id, occurrence_count')
@@ -338,7 +367,8 @@ export async function recordMistakePattern(type, description, original, correcte
         pattern_type: type,
         description,
         example_original: original,
-        example_corrected: corrected
+        example_corrected: corrected,
+        user_id: userId,
       });
   }
 }
@@ -423,6 +453,8 @@ export async function getPronunciationSentences(limit = 15) {
 
 export async function savePronunciationAttempt(referenceText, referencePinyin, scores, wordScores) {
   if (!useSupabase()) return local.savePronunciationAttempt(referenceText, referencePinyin, scores, wordScores);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
   const sb = getSupabaseClient();
   const { error } = await sb
     .from('shadowing_attempts')
@@ -434,6 +466,7 @@ export async function savePronunciationAttempt(referenceText, referencePinyin, s
       completeness_score: scores.completeness,
       pronunciation_score: scores.overall,
       word_scores: wordScores,
+      user_id: userId,
     });
   if (error) console.error('savePronunciationAttempt:', error);
 }

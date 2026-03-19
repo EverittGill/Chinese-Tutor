@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSettings, saveSettings } from '../utils/db';
 import useAzureTTS from '../hooks/useAzureTTS';
+import useAuth from '../hooks/useAuth';
+import { getSupabaseClient } from '../utils/supabase';
 
 const VOICE_OPTIONS = [
   { id: 'zh-CN-XiaoxiaoNeural', name: 'Xiaoxiao', desc: 'Female, warm & friendly', default: true },
@@ -20,12 +22,17 @@ const VOICE_OPTIONS = [
 const PREVIEW_TEXT = '你好！很高兴认识你。';
 
 export default function SettingsScreen({ onBack }) {
+  const { user, credits, signOut, refreshCredits } = useAuth();
   const [userName, setUserName] = useState('');
   const [userContext, setUserContext] = useState('');
   const [ttsVoice, setTtsVoice] = useState('zh-CN-XiaoxiaoNeural');
   const [pinyinDisplayMode, setPinyinDisplayMode] = useState('characters_only');
   const [saved, setSaved] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoError, setPromoError] = useState(null);
+  const [promoSuccess, setPromoSuccess] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
 
   const { speak, isSpeaking } = useAzureTTS(ttsVoice);
 
@@ -187,6 +194,78 @@ export default function SettingsScreen({ onBack }) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Account */}
+        <div className="bg-warm-100 rounded-2xl p-5 shadow-soft space-y-4">
+          <h2 className="text-lg font-semibold text-warm-900">Account</h2>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-warm-600">Email</span>
+              <span className="text-warm-900">{user?.email}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-warm-600">Credits</span>
+              <span className="text-warm-900 font-medium">
+                {credits != null ? `$${(credits / 1_000_000).toFixed(2)}` : '...'}
+              </span>
+            </div>
+          </div>
+
+          {/* Redeem promo code */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-warm-700">Redeem Promo Code</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); setPromoSuccess(false); }}
+                placeholder="Enter code"
+                className="flex-1 bg-warm-50 border border-warm-300 rounded-lg px-3 py-2 text-sm text-warm-900 placeholder-warm-400 focus:outline-none focus:ring-1 focus:ring-brand-500 uppercase"
+              />
+              <button
+                onClick={async () => {
+                  if (!promoCode.trim()) return;
+                  setRedeeming(true);
+                  setPromoError(null);
+                  setPromoSuccess(false);
+                  try {
+                    const sb = getSupabaseClient();
+                    const { data, error } = await sb.rpc('redeem_promo_code', {
+                      p_code: promoCode.trim().toUpperCase(),
+                      p_user_id: user.id,
+                    });
+                    if (error) throw error;
+                    if (!data.success) {
+                      setPromoError(data.error);
+                    } else {
+                      setPromoSuccess(true);
+                      setPromoCode('');
+                      await refreshCredits();
+                    }
+                  } catch (err) {
+                    setPromoError(err.message);
+                  } finally {
+                    setRedeeming(false);
+                  }
+                }}
+                disabled={redeeming || !promoCode.trim()}
+                className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg cursor-pointer transition-colors"
+              >
+                {redeeming ? '...' : 'Redeem'}
+              </button>
+            </div>
+            {promoError && <p className="text-red-600 text-xs">{promoError}</p>}
+            {promoSuccess && <p className="text-green-600 text-xs">Code redeemed!</p>}
+          </div>
+
+          <button
+            onClick={signOut}
+            className="w-full bg-warm-200 hover:bg-warm-300 text-warm-700 text-sm font-medium py-2 rounded-lg cursor-pointer transition-colors"
+          >
+            Sign Out
+          </button>
         </div>
       </div>
     </div>

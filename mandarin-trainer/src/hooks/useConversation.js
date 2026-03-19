@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { getSystemPrompt, getReviewSystemPrompt, getTeacherSystemPrompt } from '../utils/claudePrompt';
+import { apiFetch } from '../utils/apiFetch';
 
 export default function useConversation(topic = null, vocabularyContext = null, mode = 'normal', levelContext = null, sessionFocus = '', learnerBriefing = null, userProfile = null) {
   const [aiResponse, setAiResponse] = useState(null);
@@ -14,9 +15,8 @@ export default function useConversation(topic = null, vocabularyContext = null, 
     messagesRef.current.push({ role: 'user', content: text });
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await apiFetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: messagesRef.current,
           systemPrompt: (() => {

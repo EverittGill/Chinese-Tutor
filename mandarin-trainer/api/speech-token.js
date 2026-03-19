@@ -1,4 +1,10 @@
+import { authenticateRequest } from './authMiddleware.js';
+
 export default async function handler(req, res) {
+  // Authenticate
+  const auth = await authenticateRequest(req);
+  if (auth.error) return res.status(auth.status).json({ error: auth.error });
+
   const key = process.env.AZURE_SPEECH_KEY;
   const region = process.env.AZURE_SPEECH_REGION;
 

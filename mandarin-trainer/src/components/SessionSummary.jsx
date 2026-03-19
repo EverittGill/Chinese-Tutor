@@ -3,6 +3,7 @@ import { getSummaryPrompt, summaryTool } from '../utils/summaryPrompt';
 import useAzureTTS from '../hooks/useAzureTTS';
 import { getSettings } from '../utils/db';
 import { MODELS } from '../utils/models';
+import { apiFetch } from '../utils/apiFetch';
 
 export default function SessionSummary({ exchanges, onDone }) {
   const [summary, setSummary] = useState(null);
@@ -22,9 +23,8 @@ export default function SessionSummary({ exchanges, onDone }) {
           `Turn ${i + 1}:\nUser: ${ex.userText}${ex.pronunciationScore != null ? ` (pronunciation: ${ex.pronunciationScore}/100)` : ''}\nAI: ${JSON.stringify(ex.aiResponse)}`
         ).join('\n\n');
 
-        const res = await fetch('/api/chat', {
+        const res = await apiFetch('/api/chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: [{ role: 'user', content: `Here is the session data:\n\n${exchangeText}\n\nPlease generate a session summary.` }],
             systemPrompt: getSummaryPrompt(),

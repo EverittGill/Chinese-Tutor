@@ -1,3 +1,5 @@
+import { apiFetch } from './apiFetch';
+
 // Azure config — token fetched from backend at runtime
 let azureTokenCache = null;
 
@@ -8,7 +10,7 @@ export async function getAzureSpeechToken() {
   }
 
   try {
-    const res = await fetch('/api/speech-token');
+    const res = await apiFetch('/api/speech-token');
     const data = await res.json();
     if (data.token && data.region) {
       azureTokenCache = { token: data.token, region: data.region, fetchedAt: Date.now() };

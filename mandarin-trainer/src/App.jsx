@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { hasAllConfig } from './utils/config';
-import SetupScreen from './components/SetupScreen';
+import { AuthProvider } from './contexts/AuthContext';
+import useAuth from './hooks/useAuth';
+import AuthScreen from './components/AuthScreen';
+import PromoCodeScreen from './components/PromoCodeScreen';
 import TopicSelector from './components/TopicSelector';
 import ConversationScreen from './components/ConversationScreen';
 import VocabScreen from './components/VocabScreen';
@@ -9,13 +11,36 @@ import FlashcardScreen from './components/FlashcardScreen';
 import PronunciationScreen from './components/PronunciationScreen';
 import SettingsScreen from './components/SettingsScreen';
 
-export default function App() {
-  const [configured, setConfigured] = useState(hasAllConfig());
+function AppContent() {
+  const { user, loading, credits } = useAuth();
+  console.log('[AppContent] loading:', loading, 'user:', !!user, 'credits:', credits);
   const [screen, setScreen] = useState('topics');
   const [selectedTopic, setSelectedTopic] = useState(null);
 
-  if (!configured) {
-    return <SetupScreen onComplete={() => setConfigured(true)} />;
+  if (loading) {
+    return (
+      <div className="min-h-dvh bg-warm-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
+
+  // Show promo code screen if user has no credits
+  if (credits !== null && credits <= 0) {
+    return <PromoCodeScreen />;
+  }
+
+  // Credits still loading
+  if (credits === null) {
+    return (
+      <div className="min-h-dvh bg-warm-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   if (screen === 'topics') {
@@ -63,4 +88,12 @@ export default function App() {
   }
 
   return null;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 }
