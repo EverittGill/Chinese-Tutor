@@ -273,6 +273,13 @@ export default function FlashcardScreen({ onBack }) {
     }
   }, [turnId, recognizedText, pronunciationData]);
 
+  const handleTryAgain = useCallback(() => {
+    setRevealed(false);
+    setPronunciationScore(null);
+    setWordScores(null);
+    lastProcessedTurnRef.current = 0;
+  }, []);
+
   const handleReveal = useCallback(() => {
     if (isListening) return;
     startTimeRef.current = Date.now();
@@ -817,6 +824,11 @@ export default function FlashcardScreen({ onBack }) {
                   </div>
                 </button>
               ))}
+            </div>
+            <div className="flex justify-center mt-3">
+              <button onClick={handleTryAgain} className="text-warm-500 hover:text-warm-700 text-sm underline cursor-pointer">
+                Try again
+              </button>
             </div>
           </div>
         )}

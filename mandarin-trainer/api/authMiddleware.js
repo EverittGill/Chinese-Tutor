@@ -85,7 +85,10 @@ const RATES = {
   'claude-haiku-4-5-20251001': { input: 1, output: 2 },
 };
 
-export function calculateCost(model, inputTokens, outputTokens) {
+export function calculateCost(model, inputTokens, outputTokens, cacheCreationTokens = 0, cacheReadTokens = 0) {
   const rate = RATES[model] || RATES['claude-sonnet-4-6'];
-  return (inputTokens * rate.input) + (outputTokens * rate.output);
+  return (inputTokens * rate.input)
+    + (outputTokens * rate.output)
+    + (cacheCreationTokens * rate.input * 1.25)
+    + (cacheReadTokens * rate.input * 0.1);
 }

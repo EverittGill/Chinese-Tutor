@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { importWords } from '../utils/db';
 import { MODELS } from '../utils/models';
-import { apiFetch } from '../utils/apiFetch';
+import { apiFetch, CreditError } from '../utils/apiFetch';
+import useAuth from '../hooks/useAuth';
 
 const convertTool = {
   name: "convert_vocabulary",
@@ -39,6 +40,7 @@ function hasChinese(str) {
 }
 
 export default function VocabImport({ onImported }) {
+  const { setCreditError } = useAuth();
   const [text, setText] = useState('');
   const [status, setStatus] = useState('new');
   const [importing, setImporting] = useState(false);
@@ -133,6 +135,10 @@ Rules:
 
       setConvertedEntries(entries);
     } catch (err) {
+      if (err instanceof CreditError) {
+        setCreditError(true);
+        return;
+      }
       setConvertError(err.message || 'Conversion failed');
     } finally {
       setConverting(false);

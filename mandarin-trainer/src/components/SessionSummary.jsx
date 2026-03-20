@@ -3,7 +3,8 @@ import { getSummaryPrompt, summaryTool } from '../utils/summaryPrompt';
 import useAzureTTS from '../hooks/useAzureTTS';
 import { getSettings } from '../utils/db';
 import { MODELS } from '../utils/models';
-import { apiFetch } from '../utils/apiFetch';
+import { apiFetch, CreditError } from '../utils/apiFetch';
+import useAuth from '../hooks/useAuth';
 
 export default function SessionSummary({ exchanges, onDone }) {
   const [summary, setSummary] = useState(null);
@@ -11,6 +12,7 @@ export default function SessionSummary({ exchanges, onDone }) {
   const [error, setError] = useState(null);
   const [ttsVoice, setTtsVoice] = useState(null);
   const { speak, isSpeaking } = useAzureTTS(ttsVoice);
+  const { setCreditError } = useAuth();
 
   useEffect(() => {
     getSettings().then(s => { if (s.tts_voice) setTtsVoice(s.tts_voice); });
@@ -38,6 +40,10 @@ export default function SessionSummary({ exchanges, onDone }) {
         const data = await res.json();
         setSummary(data.content);
       } catch (err) {
+        if (err instanceof CreditError) {
+          setCreditError(true);
+          return;
+        }
         setError(err.message);
       } finally {
         setLoading(false);
@@ -45,7 +51,7 @@ export default function SessionSummary({ exchanges, onDone }) {
     }
 
     fetchSummary();
-  }, [exchanges]);
+  }, [exchanges, setCreditError]);
 
   if (loading) {
     return (

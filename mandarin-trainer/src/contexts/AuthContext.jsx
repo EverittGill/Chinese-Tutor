@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [credits, setCredits] = useState(null);
+  const [creditError, setCreditError] = useState(false);
 
   useEffect(() => {
     const sb = getSupabaseClient();
@@ -108,6 +109,8 @@ export function AuthProvider({ children }) {
       user,
       loading,
       credits,
+      creditError,
+      setCreditError,
       signUp,
       signIn,
       signOut,

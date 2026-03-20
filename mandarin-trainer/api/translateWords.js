@@ -76,7 +76,7 @@ export async function translateWords(client, chineseText, englishContext) {
     const response = await client.messages.create({
       model: HAIKU_MODEL,
       max_tokens: 512,
-      system: systemPrompt,
+      system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
       messages: [{ role: 'user', content: userContent }],
       tools: [contextualTranslationTool],
       tool_choice: { type: "tool", name: "contextual_translations" },
@@ -85,6 +85,8 @@ export async function translateWords(client, chineseText, englishContext) {
     const haikuUsage = response.usage ? {
       input_tokens: response.usage.input_tokens,
       output_tokens: response.usage.output_tokens,
+      cache_creation_input_tokens: response.usage.cache_creation_input_tokens || 0,
+      cache_read_input_tokens: response.usage.cache_read_input_tokens || 0,
       model: HAIKU_MODEL,
     } : null;
 

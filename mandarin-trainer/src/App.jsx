@@ -10,9 +10,10 @@ import Dashboard from './components/Dashboard';
 import FlashcardScreen from './components/FlashcardScreen';
 import PronunciationScreen from './components/PronunciationScreen';
 import SettingsScreen from './components/SettingsScreen';
+import CreditModal from './components/CreditModal';
 
 function AppContent() {
-  const { user, loading, credits } = useAuth();
+  const { user, loading, credits, creditError, setCreditError } = useAuth();
   console.log('[AppContent] loading:', loading, 'user:', !!user, 'credits:', credits);
   const [screen, setScreen] = useState('topics');
   const [selectedTopic, setSelectedTopic] = useState(null);
@@ -29,8 +30,8 @@ function AppContent() {
     return <AuthScreen />;
   }
 
-  // Show promo code screen if user has no credits
-  if (credits !== null && credits <= 0) {
+  // Show promo code screen if user has no credits (initial state, not mid-session)
+  if (credits !== null && credits <= 0 && !creditError) {
     return <PromoCodeScreen />;
   }
 
@@ -43,8 +44,16 @@ function AppContent() {
     );
   }
 
+  const handleCreditDismiss = () => {
+    setCreditError(false);
+    setSelectedTopic(null);
+    setScreen('topics');
+  };
+
+  let content = null;
+
   if (screen === 'topics') {
-    return (
+    content = (
       <TopicSelector
         onSelectTopic={(topic) => {
           setSelectedTopic(topic);
@@ -53,10 +62,8 @@ function AppContent() {
         onNavigate={(dest) => setScreen(dest)}
       />
     );
-  }
-
-  if (screen === 'conversation') {
-    return (
+  } else if (screen === 'conversation') {
+    content = (
       <ConversationScreen
         topic={selectedTopic}
         onBack={() => {
@@ -65,29 +72,24 @@ function AppContent() {
         }}
       />
     );
+  } else if (screen === 'vocab') {
+    content = <VocabScreen onBack={() => setScreen('topics')} />;
+  } else if (screen === 'dashboard') {
+    content = <Dashboard onBack={() => setScreen('topics')} />;
+  } else if (screen === 'flashcards') {
+    content = <FlashcardScreen onBack={() => setScreen('topics')} />;
+  } else if (screen === 'pronunciation') {
+    content = <PronunciationScreen onBack={() => setScreen('topics')} />;
+  } else if (screen === 'settings') {
+    content = <SettingsScreen onBack={() => setScreen('topics')} />;
   }
 
-  if (screen === 'vocab') {
-    return <VocabScreen onBack={() => setScreen('topics')} />;
-  }
-
-  if (screen === 'dashboard') {
-    return <Dashboard onBack={() => setScreen('topics')} />;
-  }
-
-  if (screen === 'flashcards') {
-    return <FlashcardScreen onBack={() => setScreen('topics')} />;
-  }
-
-  if (screen === 'pronunciation') {
-    return <PronunciationScreen onBack={() => setScreen('topics')} />;
-  }
-
-  if (screen === 'settings') {
-    return <SettingsScreen onBack={() => setScreen('topics')} />;
-  }
-
-  return null;
+  return (
+    <>
+      {content}
+      {creditError && <CreditModal onDismiss={handleCreditDismiss} />}
+    </>
+  );
 }
 
 export default function App() {
