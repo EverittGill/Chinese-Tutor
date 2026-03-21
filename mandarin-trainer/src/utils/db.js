@@ -16,6 +16,8 @@ async function getCurrentUserId() {
 
 // Settings
 
+const SETTINGS_DEFAULTS = { user_name: '', user_context: '', tts_voice: 'zh-CN-XiaoxiaoNeural', pinyin_display_mode: 'characters_only' };
+
 export async function getSettings() {
   if (!useSupabase()) return local.getSettings();
   const sb = getSupabaseClient();
@@ -25,15 +27,15 @@ export async function getSettings() {
     .single();
   if (error || !data) {
     // New user — return defaults
-    return { user_name: '', user_context: '', tts_voice: 'zh-CN-XiaoxiaoNeural', pinyin_display_mode: 'characters_only' };
+    return { ...SETTINGS_DEFAULTS };
   }
-  return data;
+  return { ...SETTINGS_DEFAULTS, ...data };
 }
 
 export async function saveSettings(settings) {
   if (!useSupabase()) return local.saveSettings(settings);
   const userId = await getCurrentUserId();
-  if (!userId) return;
+  if (!userId) { console.warn('saveSettings: no userId, data not persisted'); return; }
   const sb = getSupabaseClient();
   const { error } = await sb
     .from('user_settings')
@@ -80,7 +82,7 @@ export async function endSession(id, stats) {
 export async function saveExchange(sessionId, turnNumber, userData, aiData) {
   if (!useSupabase()) return local.saveExchange(sessionId, turnNumber, userData, aiData);
   const userId = await getCurrentUserId();
-  if (!userId) return;
+  if (!userId) { console.warn('saveExchange: no userId, data not persisted'); return; }
   const sb = getSupabaseClient();
   const { error } = await sb
     .from('exchanges')
@@ -110,7 +112,7 @@ export async function getVocabulary(status = null) {
   const { data, error } = await query;
   if (error) { console.error('getVocabulary:', error); return []; }
   // Flatten: merge vocabulary fields into top level for backward compat
-  return (data || []).map(uv => ({
+  return (data || []).filter(uv => uv.vocabulary).map(uv => ({
     id: uv.id,
     vocabulary_id: uv.vocabulary_id,
     word: uv.vocabulary.word,
@@ -141,7 +143,7 @@ export async function getVocabulary(status = null) {
 export async function upsertWord(word, pinyin, english, source = 'conversation', contextSentence = null) {
   if (!useSupabase()) return local.upsertWord(word, pinyin, english, source, contextSentence);
   const userId = await getCurrentUserId();
-  if (!userId) return;
+  if (!userId) { console.warn('upsertWord: no userId, data not persisted'); return; }
   const sb = getSupabaseClient();
 
   // 1. Upsert into vocabulary (dictionary)
@@ -277,7 +279,7 @@ export async function getDueVocabulary(limit = 20) {
     .order('due_date', { ascending: true })
     .limit(limit);
   if (error) { console.error('getDueVocabulary:', error); return []; }
-  return (data || []).map(uv => ({
+  return (data || []).filter(uv => uv.vocabulary).map(uv => ({
     id: uv.id,
     vocabulary_id: uv.vocabulary_id,
     word: uv.vocabulary.word,
@@ -343,10 +345,11 @@ export async function recordMistakePattern(type, description, original, correcte
   if (!userId) return;
   const sb = getSupabaseClient();
 
-  // Check if pattern exists (RLS filters by user_id automatically)
+  // Check if pattern exists — explicit user_id filter for defense-in-depth
   const { data } = await sb
     .from('mistake_patterns')
     .select('id, occurrence_count')
+    .eq('user_id', userId)
     .eq('description', description)
     .single();
 
@@ -469,6 +472,83 @@ export async function savePronunciationAttempt(referenceText, referencePinyin, s
       user_id: userId,
     });
   if (error) console.error('savePronunciationAttempt:', error);
+}
+
+// Streaks
+
+async function updateStreak() {
+  const settings = await getSettings();
+  const today = new Date().toISOString().slice(0, 10);
+  const lastDate = settings.last_practice_date || null;
+
+  if (lastDate === today) return; // Already practiced today
+
+  let currentStreak = settings.current_streak || 0;
+  const longestStreak = settings.longest_streak || 0;
+
+  if (lastDate) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    if (lastDate === yesterdayStr) {
+      currentStreak += 1;
+    } else {
+      currentStreak = 1;
+    }
+  } else {
+    currentStreak = 1;
+  }
+
+  await saveSettings({
+    current_streak: currentStreak,
+    longest_streak: Math.max(longestStreak, currentStreak),
+    last_practice_date: today
+  });
+}
+
+export async function recordPractice() {
+  await updateStreak();
+}
+
+// Shadowing sentences
+
+export async function getShadowingSentences(limit = 15) {
+  if (!useSupabase()) return local.getShadowingSentences(limit);
+  const sb = getSupabaseClient();
+  const seen = new Set();
+  const results = [];
+
+  const addUnique = (chinese, pinyin, english) => {
+    if (!chinese || seen.has(chinese)) return;
+    seen.add(chinese);
+    results.push({ chinese, pinyin: pinyin || '', english: english || '' });
+  };
+
+  // Fetch recent sessions with summary/corrections
+  const { data: sessions } = await sb
+    .from('sessions')
+    .select('summary_json, corrections_json')
+    .order('started_at', { ascending: false })
+    .limit(10);
+
+  if (sessions) {
+    sessions.forEach(s => {
+      if (s.summary_json?.practice_sentences) {
+        s.summary_json.practice_sentences.forEach(ps => {
+          addUnique(ps.chinese, ps.pinyin, ps.english);
+        });
+      }
+      if (s.corrections_json) {
+        s.corrections_json.forEach(c => {
+          if (c.corrected) {
+            addUnique(c.corrected, c.pinyin || '', c.explanation || '');
+          }
+        });
+      }
+    });
+  }
+
+  return results.slice(0, limit);
 }
 
 export async function getPronunciationTrend(days = 30) {

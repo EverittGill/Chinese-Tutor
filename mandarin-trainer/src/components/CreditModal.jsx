@@ -24,7 +24,7 @@ export default function CreditModal({ onDismiss }) {
 
       if (rpcError) throw rpcError;
 
-      if (!data.success) {
+      if (!data?.success) {
         setError(data.error);
       } else {
         await refreshCredits();

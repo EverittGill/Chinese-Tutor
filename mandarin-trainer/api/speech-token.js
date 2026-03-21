@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const region = process.env.AZURE_SPEECH_REGION;
 
   if (!key || !region) {
-    return res.json({ token: null, region: null });
+    return res.status(503).json({ error: 'Speech service not configured' });
   }
 
   try {
@@ -27,6 +27,7 @@ export default async function handler(req, res) {
     const token = await tokenRes.text();
     res.json({ token, region });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[speech-token] error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }

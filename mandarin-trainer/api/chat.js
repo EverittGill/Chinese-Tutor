@@ -77,7 +77,11 @@ export default async function handler(req, res) {
   if (auth.error) return res.status(auth.status).json({ error: auth.error });
 
   // Check credits
-  const balance = await checkCredits(auth.user.id);
+  const creditResult = await checkCredits(auth.user.id);
+  if (typeof creditResult === 'object' && creditResult.error) {
+    return res.status(500).json({ error: creditResult.error });
+  }
+  const balance = typeof creditResult === 'number' ? creditResult : 0;
   if (balance <= 0) {
     return res.status(402).json({ error: 'Out of credits — enter a promo code to continue' });
   }
@@ -85,7 +89,16 @@ export default async function handler(req, res) {
   try {
     const { messages, systemPrompt, maxTokens, tools: clientTools, model } = req.body;
 
-    const selectedModel = model || 'claude-sonnet-4-6';
+    // Input validation
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'messages must be a non-empty array' });
+    }
+    if (!systemPrompt || typeof systemPrompt !== 'string') {
+      return res.status(400).json({ error: 'systemPrompt must be a non-empty string' });
+    }
+
+    const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001'];
+    const selectedModel = ALLOWED_MODELS.includes(model) ? model : 'claude-sonnet-4-6';
     const requestParams = {
       model: selectedModel,
       max_tokens: maxTokens || 1024,
@@ -122,10 +135,19 @@ export default async function handler(req, res) {
       cache_read: response.usage.cache_read_input_tokens || 0,
     });
 
-    // Track usage from main call
+    // Track usage from main call — build per-model usage entries for accurate logging
     let totalCost = 0;
+    const usageEntries = [];
+
     if (response.usage) {
-      totalCost += calculateCost(selectedModel, response.usage.input_tokens, response.usage.output_tokens, response.usage.cache_creation_input_tokens || 0, response.usage.cache_read_input_tokens || 0);
+      const mainCost = calculateCost(selectedModel, response.usage.input_tokens, response.usage.output_tokens, response.usage.cache_creation_input_tokens || 0, response.usage.cache_read_input_tokens || 0);
+      totalCost += mainCost;
+      usageEntries.push({
+        model: selectedModel,
+        inputTokens: response.usage.input_tokens + (response.usage.cache_creation_input_tokens || 0) + (response.usage.cache_read_input_tokens || 0),
+        outputTokens: response.usage.output_tokens,
+        cost: mainCost,
+      });
     }
 
     const toolBlock = response.content.find(b => b.type === 'tool_use');
@@ -139,12 +161,26 @@ export default async function handler(req, res) {
         userChinese ? translateWords(client, userChinese) : Promise.resolve({ words: [], pinyin: '', usage: null }),
       ]);
 
-      // Track Haiku translation costs
+      // Track Haiku translation costs (per-call entries)
       if (aiWords.usage) {
-        totalCost += calculateCost(aiWords.usage.model, aiWords.usage.input_tokens, aiWords.usage.output_tokens, aiWords.usage.cache_creation_input_tokens || 0, aiWords.usage.cache_read_input_tokens || 0);
+        const aiWordsCost = calculateCost(aiWords.usage.model, aiWords.usage.input_tokens, aiWords.usage.output_tokens, aiWords.usage.cache_creation_input_tokens || 0, aiWords.usage.cache_read_input_tokens || 0);
+        totalCost += aiWordsCost;
+        usageEntries.push({
+          model: aiWords.usage.model,
+          inputTokens: aiWords.usage.input_tokens + (aiWords.usage.cache_creation_input_tokens || 0) + (aiWords.usage.cache_read_input_tokens || 0),
+          outputTokens: aiWords.usage.output_tokens,
+          cost: aiWordsCost,
+        });
       }
       if (userTranslation.usage) {
-        totalCost += calculateCost(userTranslation.usage.model, userTranslation.usage.input_tokens, userTranslation.usage.output_tokens, userTranslation.usage.cache_creation_input_tokens || 0, userTranslation.usage.cache_read_input_tokens || 0);
+        const userTransCost = calculateCost(userTranslation.usage.model, userTranslation.usage.input_tokens, userTranslation.usage.output_tokens, userTranslation.usage.cache_creation_input_tokens || 0, userTranslation.usage.cache_read_input_tokens || 0);
+        totalCost += userTransCost;
+        usageEntries.push({
+          model: userTranslation.usage.model,
+          inputTokens: userTranslation.usage.input_tokens + (userTranslation.usage.cache_creation_input_tokens || 0) + (userTranslation.usage.cache_read_input_tokens || 0),
+          outputTokens: userTranslation.usage.output_tokens,
+          cost: userTransCost,
+        });
       }
 
       result.words = aiWords.words;
@@ -153,20 +189,17 @@ export default async function handler(req, res) {
       result.user_pinyin = userTranslation.pinyin;
 
       // Deduct credits
-      const totalInputTokens = (response.usage?.input_tokens || 0)
-        + (aiWords.usage?.input_tokens || 0)
-        + (userTranslation.usage?.input_tokens || 0);
-      const totalOutputTokens = (response.usage?.output_tokens || 0)
-        + (aiWords.usage?.output_tokens || 0)
-        + (userTranslation.usage?.output_tokens || 0);
+      const deductResult = await deductCredits(auth.user.id, totalCost, usageEntries, 'chat');
 
-      const deductResult = await deductCredits(auth.user.id, totalCost, selectedModel, totalInputTokens, totalOutputTokens, 'chat');
+      if (deductResult.error) {
+        return res.status(deductResult.status || 402).json({ error: deductResult.error });
+      }
 
       res.json({
         content: result,
         credits: {
           cost: totalCost,
-          remaining: deductResult.error ? 0 : deductResult.remainingBalance,
+          remaining: deductResult.remainingBalance,
           cache: {
             creation: response.usage.cache_creation_input_tokens || 0,
             read: response.usage.cache_read_input_tokens || 0,
@@ -178,12 +211,17 @@ export default async function handler(req, res) {
 
       // Still deduct cost for the main call
       if (totalCost > 0) {
-        const deductResult = await deductCredits(auth.user.id, totalCost, selectedModel, response.usage?.input_tokens || 0, response.usage?.output_tokens || 0, 'chat');
+        const deductResult = await deductCredits(auth.user.id, totalCost, usageEntries, 'chat');
+
+        if (deductResult.error) {
+          return res.status(deductResult.status || 402).json({ error: deductResult.error });
+        }
+
         res.json({
           content: textBlock?.text || '',
           credits: {
             cost: totalCost,
-            remaining: deductResult.error ? 0 : deductResult.remainingBalance,
+            remaining: deductResult.remainingBalance,
             cache: {
               creation: response.usage.cache_creation_input_tokens || 0,
               read: response.usage.cache_read_input_tokens || 0,
@@ -195,6 +233,7 @@ export default async function handler(req, res) {
       }
     }
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[chat] error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }

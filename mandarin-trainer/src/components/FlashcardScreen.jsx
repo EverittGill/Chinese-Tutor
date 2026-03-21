@@ -56,7 +56,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createEmptyCard, fsrs, generatorParameters, Rating } from 'ts-fsrs';
-import { getDueVocabulary, updateFSRSCard, saveReviewLog, getSettings } from '../utils/db';
+import { getDueVocabulary, updateFSRSCard, saveReviewLog, getSettings, recordPractice } from '../utils/db';
 import useAzureSpeech from '../hooks/useAzureSpeech';
 import useAzureTTS from '../hooks/useAzureTTS';
 
@@ -223,6 +223,7 @@ export default function FlashcardScreen({ onBack }) {
           // or cards that became due during the session)
           setCurrentCard(null);
           setWaitingUntil(null);
+          recordPractice();
           getDueVocabulary(50).then(more => setMoreDueCount(more.length));
         }
 
@@ -296,8 +297,11 @@ export default function FlashcardScreen({ onBack }) {
   }, [revealed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Rate the current card and advance ---
+  const ratingRef = useRef(false);
   const handleRate = useCallback(async (rating) => {
-    if (!currentCard) return;
+    if (!currentCard || ratingRef.current) return;
+    ratingRef.current = true;
+    try {
     const durationMs = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
 
     // Snapshot the card's pre-rating state so undo can fully revert
@@ -376,6 +380,7 @@ export default function FlashcardScreen({ onBack }) {
     }, 4000);
 
     pickNextCard();
+    } finally { ratingRef.current = false; }
   }, [currentCard, pickNextCard]);
 
   // --- Undo: revert DB state, re-queue cards, restore the original card ---
@@ -383,16 +388,23 @@ export default function FlashcardScreen({ onBack }) {
     if (!lastAction) return;
     const { originalCard } = lastAction;
 
-    // Write back the original FSRS fields, erasing the rating we just saved
-    await updateFSRSCard(originalCard.id, {
-      difficulty: originalCard.difficulty,
-      stability: originalCard.stability,
-      retrievability: originalCard.retrievability || 0,
-      reps: originalCard.reps,
-      lapses: originalCard.lapses,
-      state: originalCard.state,
-      due_date: originalCard.due_date
-    });
+    try {
+      // Write back the original FSRS fields, erasing the rating we just saved
+      await updateFSRSCard(originalCard.id, {
+        difficulty: originalCard.difficulty,
+        stability: originalCard.stability,
+        retrievability: originalCard.retrievability || 0,
+        reps: originalCard.reps,
+        lapses: originalCard.lapses,
+        state: originalCard.state,
+        due_date: originalCard.due_date
+      });
+    } catch (err) {
+      console.error('Undo failed:', err);
+      setLastAction(null);
+      setShowUndo(false);
+      return;
+    }
 
     // If the rated card was re-queued to the learning queue, remove it
     setLearningQueue(prev => prev.filter(c => c.id !== originalCard.id));

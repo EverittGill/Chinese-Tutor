@@ -4,11 +4,12 @@
 function getStore(key) {
   try {
     return JSON.parse(localStorage.getItem(key)) || [];
-  } catch { return []; }
+  } catch (e) { console.error(`localStorage parse failed for ${key}:`, e); return []; }
 }
 
 function setStore(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
+  try { localStorage.setItem(key, JSON.stringify(data)); }
+  catch (e) { console.error(`localStorage write failed for ${key}:`, e); }
 }
 
 function uuid() {
@@ -17,9 +18,16 @@ function uuid() {
 
 // Settings
 
+const SETTINGS_DEFAULTS = {
+  user_name: '',
+  user_context: '',
+  tts_voice: 'zh-CN-XiaoxiaoNeural',
+  pinyin_display_mode: 'characters_only',
+};
+
 export async function getSettings() {
-  try { return JSON.parse(localStorage.getItem('mt_settings')) || {}; }
-  catch { return {}; }
+  try { return { ...SETTINGS_DEFAULTS, ...JSON.parse(localStorage.getItem('mt_settings')) }; }
+  catch { return { ...SETTINGS_DEFAULTS }; }
 }
 
 export async function saveSettings(settings) {
@@ -410,6 +418,76 @@ export async function savePronunciationAttempt(referenceText, referencePinyin, s
     created_at: new Date().toISOString()
   });
   setStore('mt_shadowing', attempts);
+}
+
+// Streaks
+
+async function updateStreak() {
+  const settings = await getSettings();
+  const today = new Date().toISOString().slice(0, 10);
+  const lastDate = settings.last_practice_date || null;
+
+  if (lastDate === today) return;
+
+  let currentStreak = settings.current_streak || 0;
+  const longestStreak = settings.longest_streak || 0;
+
+  if (lastDate) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    if (lastDate === yesterdayStr) {
+      currentStreak += 1;
+    } else {
+      currentStreak = 1;
+    }
+  } else {
+    currentStreak = 1;
+  }
+
+  await saveSettings({
+    current_streak: currentStreak,
+    longest_streak: Math.max(longestStreak, currentStreak),
+    last_practice_date: today
+  });
+}
+
+export async function recordPractice() {
+  await updateStreak();
+}
+
+// Shadowing sentences
+
+export async function getShadowingSentences(limit = 15) {
+  const seen = new Set();
+  const results = [];
+
+  const addUnique = (chinese, pinyin, english) => {
+    if (!chinese || seen.has(chinese)) return;
+    seen.add(chinese);
+    results.push({ chinese, pinyin: pinyin || '', english: english || '' });
+  };
+
+  const sessions = getStore('mt_sessions')
+    .sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''))
+    .slice(0, 10);
+
+  sessions.forEach(s => {
+    if (s.summary_json?.practice_sentences) {
+      s.summary_json.practice_sentences.forEach(ps => {
+        addUnique(ps.chinese, ps.pinyin, ps.english);
+      });
+    }
+    if (s.corrections_json) {
+      s.corrections_json.forEach(c => {
+        if (c.corrected) {
+          addUnique(c.corrected, c.pinyin || '', c.explanation || '');
+        }
+      });
+    }
+  });
+
+  return results.slice(0, limit);
 }
 
 export async function getPronunciationTrend(days = 30) {
